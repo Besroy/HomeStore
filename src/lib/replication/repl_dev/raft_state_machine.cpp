@@ -154,6 +154,7 @@ repl_req_ptr_t RaftStateMachine::localize_journal_entry_finish(nuraft::log_entry
 
     auto rreq = m_rd.repl_key_to_req(rkey);
     if ((rreq == nullptr) || (rreq->is_localize_pending())) {
+        RD_LOGE("Should not happen in current implementation! rkey=[{}]", rkey.to_string());
         rreq = localize_journal_entry_prepare(lentry);
         if (rreq == nullptr) {
             RELEASE_ASSERT(rreq != nullptr,
