@@ -953,18 +953,20 @@ void RaftReplDev::handle_commit(repl_req_ptr_t rreq, bool recovery) {
 
 void RaftReplDev::handle_error(repl_req_ptr_t const& rreq, ReplServiceError err) {
     if (err == ReplServiceError::OK) { return; }
+    RD_LOGE("Raft Channel: Error in processing rreq=[{}] error={}", rreq->to_string(), err);
 
     if (!rreq->add_state_if_not_already(repl_req_state_t::ERRORED)) {
-        RD_LOGE("Raft Channel: Error in processing rreq=[{}] error={}", rreq->to_string(), err);
+        RD_LOGE("Raft Channel: Error has been added for rreq=[{}] error={}", rreq->to_string(), err);
         return;
     }
 
     // Remove from the map and thus its no longer accessible from applier_create_req
     m_repl_key_req_map.erase(rreq->rkey());
+    // Remove from the lsn map and thus its no longger accessible for commit (is it really needed?)
+    m_state_machine->unlink_lsn_to_req(rreq->lsn(), rreq);
 
-    if (rreq->op_code() == journal_type_t::HS_DATA_INLINED) {
+    if (rreq->op_code() == journal_type_t::HS_DATA_LINKED) {
         // Free the blks which is allocated already
-        RD_LOGE("Raft Channel: Error in processing rreq=[{}] error={}", rreq->to_string(), err);
         if (rreq->has_state(repl_req_state_t::BLK_ALLOCATED)) {
             auto blkid = rreq->local_blkid();
             data_service().async_free_blk(blkid).thenValue([blkid](auto&& err) {
