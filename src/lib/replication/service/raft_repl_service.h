@@ -45,7 +45,7 @@ private:
     json_superblk m_config_sb;
     std::vector< std::pair< sisl::byte_view, void* > > m_config_sb_bufs;
     std::mutex m_pending_fetch_mtx;
-    std::queue< std::pair< shared< RaftReplDev >, std::vector< repl_req_ptr_t > > > m_pending_fetch_batches;
+    std::queue< std::pair< shared< RaftReplDev >, std::vector< repl_req_ptr_t >* > > m_pending_fetch_batches;
     iomgr::timer_handle_t m_rdev_fetch_timer_hdl;
     iomgr::timer_handle_t m_rdev_gc_timer_hdl;
     iomgr::timer_handle_t m_flush_durable_commit_timer_hdl;
@@ -62,7 +62,7 @@ public:
     std::shared_ptr< nuraft_mesg::mesg_state_mgr > create_state_mgr(int32_t srv_id,
                                                                     nuraft_mesg::group_id_t const& group_id) override;
     nuraft_mesg::Manager& msg_manager() { return *m_msg_mgr; }
-    void add_to_fetch_queue(cshared< RaftReplDev >& rdev, std::vector< repl_req_ptr_t > rreqs);
+    void add_to_fetch_queue(cshared< RaftReplDev >& rdev, std::vector< repl_req_ptr_t >* rreqs);
 
 protected:
     ///////////////////// Overrides of GenericReplService ////////////////////

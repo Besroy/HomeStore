@@ -597,15 +597,15 @@ folly::Future< folly::Unit > RaftReplDev::notify_after_data_written(std::vector<
 bool RaftReplDev::wait_for_data_receive(std::vector< repl_req_ptr_t > const& rreqs, uint64_t timeout_ms,
                                         std::vector< repl_req_ptr_t >* timeout_rreqs) {
     std::vector< folly::Future< folly::Unit > > futs;
-    std::vector< repl_req_ptr_t > only_wait_reqs;
-    only_wait_reqs.reserve(rreqs.size());
+    auto only_wait_reqs = sisl::VectorPool< repl_req_ptr_t >::alloc();
+    only_wait_reqs->reserve(rreqs.size());
     futs.reserve(rreqs.size());
 
     for (auto const& rreq : rreqs) {
         if ((rreq == nullptr) || (!rreq->has_linked_data()) || (rreq->has_state(repl_req_state_t::DATA_RECEIVED))) {
             continue;
         }
-        only_wait_reqs.emplace_back(rreq);
+        only_wait_reqs->emplace_back(rreq);
         futs.emplace_back(rreq->m_data_received_promise.getFuture());
     }
 
@@ -618,7 +618,7 @@ bool RaftReplDev::wait_for_data_receive(std::vector< repl_req_ptr_t > const& rre
     // would be reached automatically.
     RD_LOG(DEBUG,
            "We haven't received data for {} out {} in reqs batch, will fetch and wait for {} ms, in_resync_mode()={} ",
-           only_wait_reqs.size(), rreqs.size(), timeout_ms, is_resync_mode());
+           only_wait_reqs->size(), rreqs.size(), timeout_ms, is_resync_mode());
 
     // We are yet to support reactive fetch from remote.
     if (is_resync_mode()) {
@@ -633,21 +633,22 @@ bool RaftReplDev::wait_for_data_receive(std::vector< repl_req_ptr_t > const& rre
         timeout_rreqs->clear();
         for (size_t i{0}; i < futs.size(); ++i) {
             if (!futs[i].isReady()) {
-                timeout_rreqs->emplace_back(only_wait_reqs[i]);
+                timeout_rreqs->emplace_back(only_wait_reqs->at(i));
             }
         }
         all_futs_ready = timeout_rreqs->empty();
     }
+    sisl::VectorPool< repl_req_ptr_t >::free(only_wait_reqs);
     return all_futs_ready;
 }
 
-void RaftReplDev::check_and_fetch_remote_data(std::vector< repl_req_ptr_t > rreqs) {
+void RaftReplDev::check_and_fetch_remote_data(std::vector< repl_req_ptr_t >* rreqs) {
     auto total_size_to_fetch = 0ul;
     std::vector< repl_req_ptr_t > next_batch_rreqs;
     auto const max_batch_size = HS_DYNAMIC_CONFIG(consensus.data_fetch_max_size_kb) * 1024ull;
-    auto const originator = rreqs.front()->remote_blkid().server_id;
+    auto const originator = rreqs->front()->remote_blkid().server_id;
 
-    for (auto const& rreq : rreqs) {
+    for (auto const& rreq : *rreqs) {
         auto const cur_state = uint32_cast(rreq->state());
         if (cur_state == uint32_cast(repl_req_state_t::ERRORED)) {
             // We already received the data before, just ignore this data

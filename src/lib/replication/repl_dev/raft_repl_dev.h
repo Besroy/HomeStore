@@ -201,7 +201,7 @@ public:
     repl_req_ptr_t applier_create_req(repl_key const& rkey, journal_type_t code, sisl::blob const& user_header,
                                       sisl::blob const& key, uint32_t data_size, bool is_data_channel);
     folly::Future< folly::Unit > notify_after_data_written(std::vector< repl_req_ptr_t >* rreqs);
-    void check_and_fetch_remote_data(std::vector< repl_req_ptr_t > rreqs);
+    void check_and_fetch_remote_data(std::vector< repl_req_ptr_t >* rreqs);
     void cp_flush(CP* cp, cshared< ReplDevCPContext > ctx);
     cshared< ReplDevCPContext > get_cp_ctx(CP* cp);
     void cp_cleanup(CP* cp);
