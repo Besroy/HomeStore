@@ -1560,6 +1560,11 @@ void RaftReplDev::on_log_found(logstore_seq_num_t lsn, log_buffer buf, void* ctx
 }
 
 void RaftReplDev::create_snp_resync_data(raft_buf_ptr_t& data_out) {
+    // set limit here to sm long running test
+    auto limits = raft_server()->get_raft_limits();
+    limits.response_limit_ = 10000;
+    raft_server()->set_raft_limits(limits);
+
     snp_repl_dev_data msg;
     auto msg_size = sizeof(snp_repl_dev_data);
     msg.dsn = m_next_dsn;
@@ -1571,6 +1576,11 @@ void RaftReplDev::create_snp_resync_data(raft_buf_ptr_t& data_out) {
 }
 
 bool RaftReplDev::apply_snp_resync_data(nuraft::buffer& data) {
+    // set limit here to sm long running test
+    auto limits = raft_server()->get_raft_limits();
+    limits.response_limit_ = 10000;
+    raft_server()->set_raft_limits(limits);
+
     auto msg = r_cast< snp_repl_dev_data* >(data.data_begin());
     if (msg->magic_num != HOMESTORE_RESYNC_DATA_MAGIC ||
         msg->protocol_version != HOMESTORE_RESYNC_DATA_PROTOCOL_VERSION_V1) {
