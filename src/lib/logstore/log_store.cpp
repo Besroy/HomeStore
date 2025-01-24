@@ -193,10 +193,13 @@ void HomeLogStore::truncate(logstore_seq_num_t upto_lsn, bool in_memory_truncate
     // So upto_lsn > m_tail_lsn is expected to exist only in baseline resync path.
     // In baseline resync path, we truncate all entries up to upto_lsn, and update m_tail_lsn and m_next_lsn
     // to make sure logstore's idx is always = raft's idx - 1.
+    // Additionally, m_trunc_ld_key should be updated to match the truncation key of tail_lsn.
+    // This ensures that logdev can obtain the correct trunc index in scenarios where new logs appended after ls truncate.
     if (upto_lsn > m_tail_lsn) {
         THIS_LOGSTORE_LOG(WARN,
                           "Truncating issued on lsn={} which is greater than tail_lsn={}",
                           upto_lsn, m_tail_lsn.load(std::memory_order_relaxed));
+        m_trunc_ld_key = m_records.at(m_tail_lsn).m_trunc_key;
         // update m_tail_lsn if it is less than upto_lsn
         auto current_tail_lsn = m_tail_lsn.load(std::memory_order_relaxed);
         while (current_tail_lsn < upto_lsn &&
@@ -212,9 +215,9 @@ void HomeLogStore::truncate(logstore_seq_num_t upto_lsn, bool in_memory_truncate
         m_records.create_and_complete(upto_lsn, logstore_record(empty_ld_key, empty_ld_key));
     } else {
         m_trunc_ld_key = m_records.at(upto_lsn).m_trunc_key;
-        THIS_LOGSTORE_LOG(TRACE, "Truncating logstore upto lsn={} , m_trunc_ld_key index {} offset {}", upto_lsn,
-                          m_trunc_ld_key.idx, m_trunc_ld_key.dev_offset);
     }
+    THIS_LOGSTORE_LOG(TRACE, "Truncating logstore upto lsn={} , m_trunc_ld_key index {} offset {}", upto_lsn,
+                      m_trunc_ld_key.idx, m_trunc_ld_key.dev_offset);
     m_records.truncate(upto_lsn);
     m_start_lsn.store(upto_lsn + 1);
     if (!in_memory_truncate_only) { m_logdev->truncate(); }
