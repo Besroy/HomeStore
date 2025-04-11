@@ -558,6 +558,9 @@ repl_req_ptr_t RaftReplDev::applier_create_req(repl_key const& rkey, journal_typ
             // RD_REL_ASSERT(blob_equals(user_key, rreq->key), "User key mismatch for repl_key={}", rkey.to_string());
             RD_LOGT(rkey.traceID, "Repl_key=[{}] already received  ", rkey.to_string());
             return rreq;
+        } else {
+            // need to alloc and wait for data received, reset promise to prevent its false-positive timeout
+            rreq->m_data_received_promise = folly::Promise< folly::Unit >{};
         }
     }
 
