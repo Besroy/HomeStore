@@ -896,8 +896,8 @@ void RaftReplDev::push_data_to_all_followers(repl_req_ptr_t rreq, sisl::sg_list 
         std::memcpy(cur, iov.iov_base, iov.iov_len);
         cur = static_cast< void* >(static_cast< char* >(cur) + iov.iov_len);
     }
-    RD_LOGD(rreq->traceID(), "Data Channel: the sha256 value of the data pushed for rreq=[{}] is {}",
-            rreq->to_compact_string(), sha256ToUint64(raw_data, data.size));
+    RD_LOGD(rreq->traceID(), "Data Channel: the sha256 value of the data pushed for rreq=[{}] is {}, data_size is {}",
+            rreq->to_compact_string(), sha256ToUint64(raw_data, data.size), data.size);
     free(raw_data);
 
     // Prepare the rpc request packet with all repl_reqs details
@@ -947,10 +947,13 @@ void RaftReplDev::on_push_data_received(intrusive< sisl::GenericRpcData >& rpc_d
         rpc_data->send_response();
         return;
     }
+    RD_LOGD(NO_TRACE_ID, "Data Channel: PushData received with size {}", incoming_buf.size());
 
     auto const fb_size =
         flatbuffers::ReadScalar< flatbuffers::uoffset_t >(incoming_buf.cbytes()) + sizeof(flatbuffers::uoffset_t);
     auto push_req = GetSizePrefixedPushDataRequest(incoming_buf.cbytes());
+    RD_LOGD(NO_TRACE_ID, "Data Channel: PushData received, header size {}, data size {}, received size {}", fb_size,
+            push_req->data_size(), incoming_buf.size());
     if (fb_size + push_req->data_size() != incoming_buf.size()) {
         RD_LOGW(NO_TRACE_ID,
                 "Data Channel: PushData received with size mismatch, header size {}, data size {}, received size {}",
@@ -1409,8 +1412,9 @@ void RaftReplDev::on_fetch_data_received(intrusive< sisl::GenericRpcData >& rpc_
 
                     // TODO: change this if we have multiple iov in sgs in the future, like(line 850)
                     RD_LOGD(NO_TRACE_ID,
-                            "Data Channel: the sha256 value of the data in on_fetch_data_received for dsn={} is {}",
-                            dsn, sha256ToUint64(sgs.iovs[0].iov_base, sgs.iovs[0].iov_len));
+                            "Data Channel: the sha256 value of the data in on_fetch_data_received for dsn={} is {}, "
+                            "size {}",
+                            dsn, sha256ToUint64(sgs.iovs[0].iov_base, sgs.iovs[0].iov_len), sgs.iovs[0].iov_len);
 
                     for (auto const& iov : sgs.iovs) {
                         iomanager.iobuf_free(reinterpret_cast< uint8_t* >(iov.iov_base));
@@ -1434,11 +1438,13 @@ void RaftReplDev::handle_fetch_data_response(sisl::GenericClientResponse respons
     }
 
     COUNTER_INCREMENT(m_metrics, fetch_total_blk_size, total_size);
-
-    RD_LOGD(NO_TRACE_ID, "Data Channel: FetchData completed for {} requests", rreqs.size());
+    RD_LOGD(NO_TRACE_ID, "Data Channel: FetchData completed for {} requests, total_size={}", rreqs.size(), total_size);
 
     for (auto const& rreq : rreqs) {
         auto const data_size = rreq->remote_blkid().blkid.blk_count() * get_blk_size();
+        RD_LOGD(rreq->traceID(),
+                "Data Channel: Handling fetched data for rreq=[{}], data_size: {}, total_size: {}, local_blkid: {}",
+                rreq->to_compact_string(), data_size, total_size, rreq->local_blkid().to_string());
 
         if (!rreq->save_fetched_data(response, raw_data, data_size)) {
             RD_DBG_ASSERT(rreq->local_blkid().is_valid(), "Invalid blkid for rreq={}", rreq->to_string());
@@ -1461,7 +1467,7 @@ void RaftReplDev::handle_fetch_data_response(sisl::GenericClientResponse respons
 
             data_service()
                 .async_write(r_cast< const char* >(rreq->data()), data_size, rreq->local_blkid())
-                .thenValue([this, rreq, data_write_start_time](auto&& err) {
+                .thenValue([this, rreq, data_size, data_write_start_time](auto&& err) {
                     // update outstanding no matter error or not;
                     COUNTER_DECREMENT(m_metrics, outstanding_data_write_cnt, 1);
                     auto const data_write_latency = get_elapsed_time_us(data_write_start_time);
@@ -1471,6 +1477,10 @@ void RaftReplDev::handle_fetch_data_response(sisl::GenericClientResponse respons
                     HISTOGRAM_OBSERVE(m_metrics, rreq_pieces_per_write, write_num_pieces);
                     HISTOGRAM_OBSERVE(m_metrics, rreq_data_write_latency_us, data_write_latency);
                     HISTOGRAM_OBSERVE(m_metrics, rreq_total_data_write_latency_us, total_data_write_latency);
+
+                    RD_LOGD(rreq->traceID(),
+                            "Data Channel: Data write completed, the sha256 value of the data for rreq=[{}] is {}",
+                            rreq->to_compact_string(), sha256ToUint64(r_cast< const void* >(rreq->data()), data_size));
 
                     RD_REL_ASSERT(!err, "Error in writing data, error_code={}, category={}, err_message={}",
                                   err.value(), err.category().name(), err.message());
