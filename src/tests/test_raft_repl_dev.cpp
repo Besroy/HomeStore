@@ -814,6 +814,7 @@ TEST_F(RaftReplDevTest, ReconcileLeader) {
     g_helper->sync_for_cleanup_start();
 }
 
+<<<<<<< HEAD
 TEST_F(RaftReplDevTest, NuraftStateTransition) {
     LOGINFO("Homestore replica={} setup completed", g_helper->replica_num());
     g_helper->sync_for_test_start();
@@ -886,6 +887,55 @@ TEST_F(RaftReplDevTest, NuraftStateTransition) {
             "catching_up={}, receiving_snapshot={}",
             new_state->get_term(), new_state->get_voted_for(), new_state->is_election_timer_allowed(),
             new_state->is_catching_up(), new_state->is_receiving_snapshot());
+    g_helper->sync_for_cleanup_start();
+}
+
+TEST_F(RaftReplDevTest, Schedule_Snapshot_Creation) {
+    LOGINFO("Homestore replica={} setup completed", g_helper->replica_num());
+    g_helper->sync_for_test_start();
+
+    uint64_t entries_per_attempt = 100;
+    this->write_on_leader(entries_per_attempt, true /* wait_for_commit on all replicas */);
+
+    g_helper->sync_for_verify_start();
+    // we check snapshot creation on follower1
+    if (g_helper->replica_num() == 1) {
+        auto repl_dev = std::dynamic_pointer_cast< RaftReplDev >(dbs_[0]->repl_dev());
+        auto group_id = repl_dev->group_id();
+        auto current_truncation_upper_limit = repl_dev->m_truncation_upper_limit.load();
+        LOGINFO("group={} current_truncation_upper_limit={}", dbs_.back()->repl_dev()->group_id(),
+                current_truncation_upper_limit);
+        ASSERT_EQ(current_truncation_upper_limit, 0);
+        LOGINFO("Trigger scheduled snapshot creation on follower1");
+        // manually set cp lsn 10 to unblock upgrade truncate boundary logic
+        repl_dev->m_rd_sb->checkpoint_lsn = 10;
+        repl_dev->trigger_snapshot_creation(10, false /* is_async */);
+        std::this_thread::sleep_for(std::chrono::seconds{1});
+        current_truncation_upper_limit = repl_dev->m_truncation_upper_limit.load();
+        LOGINFO("After scheduled snapshot creation, group={} current_truncation_upper_limit={}", group_id,
+                current_truncation_upper_limit);
+        ASSERT_EQ(current_truncation_upper_limit, 10);
+        LOGINFO("Re-schedule snapshot creation on follower1 with lower compact lsn");
+        repl_dev->trigger_snapshot_creation(5, false /* is_async */);
+        std::this_thread::sleep_for(std::chrono::seconds{1});
+        current_truncation_upper_limit = repl_dev->m_truncation_upper_limit.load();
+        LOGINFO("After re-scheduled snapshot creation, group={} current_truncation_upper_limit={}", group_id,
+                current_truncation_upper_limit);
+        ASSERT_EQ(current_truncation_upper_limit, 10);
+        LOGINFO("Re-schedule snapshot creation on follower1 with higher compact lsn");
+        // manually set cp lsn the last commit lsn to unblock upgrade truncate boundary logic
+        auto current_commit_idx = repl_dev->get_last_commit_lsn();
+        repl_dev->m_rd_sb->checkpoint_lsn = current_commit_idx;
+        repl_dev->trigger_snapshot_creation(10000, false /* is_async */);
+        std::this_thread::sleep_for(std::chrono::seconds{1});
+        current_truncation_upper_limit = repl_dev->m_truncation_upper_limit.load();
+        LOGINFO(
+            "After re-scheduled snapshot creation, group={} current_truncation_upper_limit={}, current_commit_idx={}",
+            group_id, current_truncation_upper_limit, current_commit_idx);
+        ASSERT_EQ(current_truncation_upper_limit, current_commit_idx);
+    }
+    this->validate_data();
+    LOGINFO("Validate all data written so far by reading them");
     g_helper->sync_for_cleanup_start();
 }
 
