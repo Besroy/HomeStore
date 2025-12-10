@@ -214,6 +214,8 @@ ReplaceMemberStatus SoloReplService::get_replace_member_status(group_id_t group_
     return ReplaceMemberStatus::UNKNOWN;
 }
 
+void SoloReplService::trigger_snapshot_creation(group_id_t group_id, repl_lsn_t compact_lsn, bool is_async) {}
+
 std::unique_ptr< CPContext > SoloReplServiceCPHandler::on_switchover_cp(CP* cur_cp, CP* new_cp) {
     return std::make_unique< CPContext >(new_cp);
 }

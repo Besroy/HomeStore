@@ -106,6 +106,7 @@ public:
                                                   const replica_member_info& member_in,
                                                   const std::vector< replica_member_info >& others,
                                                   uint64_t trace_id = 0) const override;
+    void trigger_snapshot_creation(group_id_t group_id, repl_lsn_t compact_lsn, bool is_async) override;
 };
 
 class SoloReplServiceCPHandler : public CPCallbacks {

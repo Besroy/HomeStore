@@ -715,6 +715,32 @@ void RaftReplDev::on_create_snapshot(nuraft::snapshot& s, nuraft::async_result< 
     if (when_done) { when_done(ret_val, null_except); }
 }
 
+void RaftReplDev::trigger_snapshot_creation(repl_lsn_t compact_lsn, bool is_async) {
+    // Update truncation boundary if compact_lsn is specified
+    if (compact_lsn >= 0) {
+        RD_LOGD(NO_TRACE_ID, "Updating truncation boundary to lsn={}, current_truncation_boundary={}", compact_lsn,
+                m_truncation_upper_limit.load());
+        update_truncation_boundary(compact_lsn);
+    }
+
+    // Trigger snapshot creation: async schedules for next available commit, sync creates immediately
+    if (is_async) {
+        auto result = raft_server()->schedule_snapshot_creation();
+        if (!result) {
+            RD_LOGE(NO_TRACE_ID, "Failed to schedule async snapshot - another snapshot may be in progress");
+            return;
+        }
+        RD_LOGI(NO_TRACE_ID, "Successfully scheduled async snapshot creation");
+    } else {
+        auto result = raft_server()->create_snapshot();
+        if (result == 0) {
+            RD_LOGE(NO_TRACE_ID, "Failed to create sync snapshot - another snapshot may be in progress");
+            return;
+        }
+        RD_LOGI(NO_TRACE_ID, "Successfully created sync snapshot, result log_idx={}", result);
+    }
+}
+
 void RaftReplDev::propose_truncate_boundary() {
     init_req_counter counter(pending_request_num);
     auto repl_status = get_replication_status();
@@ -1481,7 +1507,7 @@ void RaftReplDev::handle_commit(repl_req_ptr_t rreq, bool recovery) {
     } else if (rreq->op_code() == journal_type_t::HS_CTRL_COMPLETE_REPLACE) {
         complete_replace_member(rreq);
     } else if (rreq->op_code() == journal_type_t::HS_CTRL_UPDATE_TRUNCATION_BOUNDARY) {
-        update_truncation_boundary(rreq);
+        update_truncation_boundary(r_cast< const truncate_ctx* >(rreq->header().cbytes())->truncation_upper_limit);
     } else {
         m_listener->on_commit(rreq->lsn(), rreq->header(), rreq->key(), {rreq->local_blkid()}, rreq);
     }
@@ -1614,7 +1640,7 @@ void RaftReplDev::complete_replace_member(repl_req_ptr_t rreq) {
     RD_LOGI(rreq->traceID(), "Raft repl replace_member_task has been cleared.");
 }
 
-void RaftReplDev::update_truncation_boundary(repl_req_ptr_t rreq) {
+void RaftReplDev::update_truncation_boundary(repl_lsn_t truncation_upper_limit) {
     repl_lsn_t cur_checkpoint_lsn = 0;
     {
         std::unique_lock lg{m_sb_mtx};
@@ -1623,8 +1649,7 @@ void RaftReplDev::update_truncation_boundary(repl_req_ptr_t rreq) {
     // expected truncation_upper_limit should not larger than the current checkpoint_lsn, this is to ensure that
     // when a crash happens before index flushed to disk, all the logs larger than checkpoint_lsn are still available
     // to replay.
-    auto ctx = r_cast< const truncate_ctx* >(rreq->header().cbytes());
-    auto exp_truncation_upper_limit = std::min(ctx->truncation_upper_limit, cur_checkpoint_lsn);
+    auto exp_truncation_upper_limit = std::min(truncation_upper_limit, cur_checkpoint_lsn);
     auto cur_truncation_upper_limit = m_truncation_upper_limit.load();
     // exp_truncation_upper_limit might be less or equal to cur_truncation_upper_limit after Baseline Re-sync,
     // we should skip update to ensure the truncation_upper_limit is always increasing.

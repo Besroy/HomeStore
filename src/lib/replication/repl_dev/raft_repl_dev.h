@@ -379,6 +379,20 @@ public:
      */
     void on_create_snapshot(nuraft::snapshot& s, nuraft::async_result< bool >::handler_type& when_done);
 
+    /**
+     * \brief  Manually create a snapshot, the snapshot can be created directly based on the latest committed log index,
+     * or it can be created asynchronously based on the next earliest available commited log index.
+     *
+     *  This function is called when we want to create a snapshot and compact the log store manually.
+     *  It provides an optional compact lsn for the log store, which is useful in scenarios like
+     *  the truncation upper limit is reset due to restart (it is a in-memory param) and the previous auto background
+     *  snapshot and compact was skipped because of the truncation upper limit is zero.
+     *
+     *  \param compact_lsn The specific truncation upper limit for the log store.
+     *  \param is_async The trigger mode for snapshot creation.
+     */
+    void trigger_snapshot_creation(repl_lsn_t compact_lsn, bool is_async) override;
+
 #if 0
     /**
      * Truncates the replication log by providing a specified number of reserved entries.
@@ -478,7 +492,7 @@ private:
     void create_snp_resync_data(raft_buf_ptr_t& data_out);
     bool save_snp_resync_data(nuraft::buffer& data, nuraft::snapshot& s);
 
-    void update_truncation_boundary(repl_req_ptr_t rreq);
+    void update_truncation_boundary(repl_lsn_t truncation_upper_limit);
     void propose_truncate_boundary();
 
     void report_blk_metrics_if_needed(repl_req_ptr_t rreq);
