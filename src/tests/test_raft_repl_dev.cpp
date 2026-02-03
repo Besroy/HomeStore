@@ -92,6 +92,61 @@ TEST_F(RaftReplDevTest, Write_Restart_Write) {
 }
 
 #ifdef _PRERELEASE
+// Simulate: truncate -> propose boundary entry (uncommitted) -> leader switch -> old leader rollback at start boundary
+TEST_F(RaftReplDevTest, TruncBoundary_LeaderSwitch_BeforeCommit) {
+    LOGINFO("Begin TruncBoundary_LeaderSwitch_BeforeCommit on replica={}", g_helper->replica_num());
+    g_helper->sync_for_test_start();
+
+    // Step 1: Write some entries and create snapshot to move start boundary
+    LOGINFO("Step 1: Write some entries and create snapshot to move start boundary");
+    this->write_on_leader(50, true /* wait_for_commit */);
+    auto repl_dev = std::dynamic_pointer_cast< RaftReplDev >(dbs_[0]->repl_dev());
+    auto current_commit_idx = repl_dev->get_last_commit_lsn();
+    repl_dev->trigger_snapshot_creation(current_commit_idx, true /* wait_for_commit */);
+    std::this_thread::sleep_for(std::chrono::seconds{1});
+    auto current_truncation_upper_limit = repl_dev->m_truncation_upper_limit.load();
+    LOGINFO("After snapshot creation, current_truncation_upper_limit={}, current_commit_idx={}",
+            current_truncation_upper_limit, current_commit_idx);
+    ASSERT_EQ(current_truncation_upper_limit, current_commit_idx);
+
+    // Step 2: validate data so far
+    g_helper->sync_for_verify_start();
+    LOGINFO("Step 2: Validate all data written so far by reading them");
+    this->validate_data();
+
+    // Step 3: Block raft append to followers so boundary log is appended but not committed
+    if (g_helper->replica_num() != 0) {
+        g_helper->set_basic_flip("fake_reject_append_raft_channel", std::numeric_limits< int >::max(), 100);
+        LOGINFO("Step 3: Set flip to fake reject append on raft channel on follower replicas");
+    }
+
+    // Step 4: Leader appends 1 boundary log but does not wait for commit, then switch leader
+    g_helper->sync_for_test_start();
+    LOGINFO("Step 4: Leader appends 1 boundary log but does not wait for commit, then switch leader");
+    this->run_on_leader(dbs_[0], [this]() {
+        auto rdev = std::dynamic_pointer_cast< RaftReplDev >(dbs_[0]->repl_dev());
+        rdev->propose_truncate_boundary();
+    });
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+
+    g_helper->sync_for_verify_start();
+    LOGINFO("Restart old leader and assign new leader");
+    this->restart_replica(0, 10 /* shutdown_delay_sec */);
+    this->assign_leader(1);
+
+    // Step 5: Unblock raft and write more on new leader; expect old leader rollback at start boundary to succeed
+    g_helper->sync_for_test_start();
+    LOGINFO(
+        "Step 5: Unblock raft and write more on new leader; expect old leader rollback at start boundary to succeed");
+    if (g_helper->replica_num() != 0) { g_helper->remove_flip("fake_reject_append_raft_channel"); }
+    this->write_on_leader(20, true /* wait_for_commit */);
+
+    g_helper->sync_for_verify_start();
+    LOGINFO("Validate all data written so far by reading them");
+    this->validate_data();
+    g_helper->sync_for_cleanup_start();
+}
+
 TEST_F(RaftReplDevTest, Follower_Fetch_OnActive_ReplicaGroup) {
     LOGINFO("Homestore replica={} setup completed", g_helper->replica_num());
     g_helper->sync_for_test_start();

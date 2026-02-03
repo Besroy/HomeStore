@@ -2348,6 +2348,22 @@ nuraft::cb_func::ReturnCode RaftReplDev::raft_event(nuraft::cb_func::Type type, 
             return ret;
         }
 
+#ifdef _PRERELEASE
+        // Test flips to drop/reject append entries in Raft channel on follower side
+        if (iomgr_flip::instance()->test_flip("fake_drop_append_raft_channel")) {
+            RD_LOGI(NO_TRACE_ID,
+                    "Raft channel: Flip fake_drop_append_raft_channel enabled, dropping append entries lsn {} ~ {}",
+                    start_lsn, start_lsn + entries.size() - 1);
+            return nuraft::cb_func::ReturnCode::ReturnNull;
+        }
+        if (iomgr_flip::instance()->test_flip("fake_reject_append_raft_channel")) {
+            RD_LOGI(NO_TRACE_ID,
+                    "Raft channel: Flip fake_reject_append_raft_channel enabled, rejecting append entries lsn {} ~ {}",
+                    start_lsn, start_lsn + entries.size() - 1);
+            return nuraft::cb_func::ReturnCode::ReturnNull;
+        }
+#endif
+
         // there is a very corner case like following:
         // T1: L1 is leader, push data to follower F1, F1 generate rreq1 and allocate blk for this data. let`s say the
         // lsn of this data is lsn-100

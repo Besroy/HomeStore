@@ -1,0 +1,350 @@
+[2026-02-04T01:05:05.532Z] [2026-02-03 18:04:38.072] [test_home_raft_log_store] [info] [logging.cpp:331:SetLogger] Logging initialized: "HomeStore"/"7.3.0", [logmods: base=info, btree=error, device=error, blkalloc=error, cp=error, metablk=error, wbcache=error, logstore=error, transient=error, replication=error, journalvdev=error, solorepl=error, ]
+[2026-02-04T01:05:05.532Z] [==========] Running 1 test from 1 test suite.
+[2026-02-04T01:05:05.532Z] [----------] Global test environment set-up.
+[2026-02-04T01:05:05.532Z] [----------] 1 test from TestRaftLogStore
+[2026-02-04T01:05:05.532Z] [ RUN      ] TestRaftLogStore.lifecycle_test
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [homestore_test_common.hpp:408:do_start_homestore] creating 3 device files with each of size 2gb
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [homestore_test_common.hpp:424:do_start_homestore] Starting iomgr with 2 threads, spdk: false
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [iomgr_config.hpp:48:operator()] Default Pools is not initialized, possibly first boot - setting with defaults
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [iomgr.cpp:110:start] Starting IOManager version 12.0.2 with 2 threads [is_spdk=false] [mem_limit=512mb, hugepage=0]
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6156] [reactor.hpp:51:IOThreadMetrics] Registring metrics group name = IOThreadMetrics, thread_name = iomgr_thread_0
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6157] [reactor.hpp:51:IOThreadMetrics] Registring metrics group name = IOThreadMetrics, thread_name = iomgr_thread_1
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6156] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring per-thread timer fd 8 and adding it into fd poll list
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6157] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring per-thread timer fd 13 and adding it into fd poll list
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6157] [iomgr.cpp:359:reactor_started] All Worker reactors started, moving iomanager to sys_init state
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring global timer fd 16 and adding it into fd poll list
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring global timer fd 17 and adding it into fd poll list
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [iomgr.cpp:181:start] IOManager is ready and move to running state
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [homestore_test_common.hpp:88:generate_random_http_port] random port generated = 46264
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [homestore_test_common.hpp:79:set_fixed_http_port] http port = 46264
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [homestore_test_common.hpp:435:do_start_homestore] Initialize and start HomeStore with app_mem_size = 921.60mb
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [homestore.cpp:138:operator()] HomeStore DEBUG version: 7.3.0
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [homestore_config.hpp:93:operator()] Free Blks Slab distribution is not initialized, possibly first boot - setting with defaults
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [homestore_config.hpp:105:init_settings_default] Some settings are defaultted or overridden explicitly in the code, saving the new settings
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [homestore.cpp:169:start] Homestore is loading with following services: meta,log,
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [cp_mgr.cpp:433:CPWatchdog] CP watchdog timer setting to : 10 seconds
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [iomgr_timer.cpp:179:setup_timer_fd] Creating recurring global timer fd 23 and adding it into fd poll list
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6196] [reactor.hpp:51:IOThreadMetrics] Registring metrics group name = IOThreadMetrics, thread_name = cp_timer_thread
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6196] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring per-thread timer fd 26 and adding it into fd poll list
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [cp_mgr.cpp:355:start_cp_thread] Starting CP IO fibers with count: 2
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6197] [reactor.hpp:51:IOThreadMetrics] Registring metrics group name = IOThreadMetrics, thread_name = cp_io
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6197] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring per-thread timer fd 31 and adding it into fd poll list
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [error] [6153] [drive_interface.cpp:86:get_major_minor] Unable to stat the path overlay, ignoring to get major/minor, ret:-1
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [error] [6153] [drive_interface.cpp:96:is_rotational_device] Failed to retrieve major:minor for device overlay
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [drive_interface.cpp:248:get_drive_type] Drive=/tmp/test_home_raft_log_store_1 is detected to be drive_type=file_on_nvme
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [error] [6153] [drive_interface.cpp:86:get_major_minor] Unable to stat the path overlay, ignoring to get major/minor, ret:-1
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [error] [6153] [drive_interface.cpp:96:is_rotational_device] Failed to retrieve major:minor for device overlay
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [drive_interface.cpp:248:get_drive_type] Drive=/tmp/test_home_raft_log_store_2 is detected to be drive_type=file_on_nvme
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [error] [6153] [drive_interface.cpp:86:get_major_minor] Unable to stat the path overlay, ignoring to get major/minor, ret:-1
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [error] [6153] [drive_interface.cpp:96:is_rotational_device] Failed to retrieve major:minor for device overlay
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [drive_interface.cpp:248:get_drive_type] Drive=/tmp/test_home_raft_log_store_3 is detected to be drive_type=file_on_nvme
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [physical_dev.cpp:89:PhysicalDev] Opening device /tmp/test_home_raft_log_store_1 with DIRECT_IO mode.
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [physical_dev.cpp:110:PhysicalDev] Device /tmp/test_home_raft_log_store_1 opened with dev_id=34 size=2gb
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:142:format_single_device] Formatting Homestore on Device[dev_name=/tmp/test_home_raft_log_store_1, pdev_id=1] with first block as: [magic=0xabbecdcd, checksum=372814955, first_blk_header=[gen_number=1, version=5, product_name=HomeStore4x system_uuid=fbed0212-f47f-4fcd-a302-e532c53d010e], this_pdev_info=[data_offset=1.54mb, size=2.00gb, pdev_id=1 max_pdev_chunks=64 dev_attr=[phys_page_size=4kb, align_size=512, atomic_phys_page_size=4kb, num_streams=1] mirror_super_block?=false]] total_super_blk_size=569344
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [physical_dev.cpp:89:PhysicalDev] Opening device /tmp/test_home_raft_log_store_2 with DIRECT_IO mode.
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [physical_dev.cpp:110:PhysicalDev] Device /tmp/test_home_raft_log_store_2 opened with dev_id=35 size=2gb
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:142:format_single_device] Formatting Homestore on Device[dev_name=/tmp/test_home_raft_log_store_2, pdev_id=2] with first block as: [magic=0xabbecdcd, checksum=1689574354, first_blk_header=[gen_number=1, version=5, product_name=HomeStore4x system_uuid=fbed0212-f47f-4fcd-a302-e532c53d010e], this_pdev_info=[data_offset=8.57mb, size=1.99gb, pdev_id=2 max_pdev_chunks=128 dev_attr=[phys_page_size=4kb, align_size=512, atomic_phys_page_size=4kb, num_streams=1] mirror_super_block?=false]] total_super_blk_size=602112
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [physical_dev.cpp:89:PhysicalDev] Opening device /tmp/test_home_raft_log_store_3 with DIRECT_IO mode.
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [physical_dev.cpp:110:PhysicalDev] Device /tmp/test_home_raft_log_store_3 opened with dev_id=36 size=2gb
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:142:format_single_device] Formatting Homestore on Device[dev_name=/tmp/test_home_raft_log_store_3, pdev_id=3] with first block as: [magic=0xabbecdcd, checksum=3773331710, first_blk_header=[gen_number=1, version=5, product_name=HomeStore4x system_uuid=fbed0212-f47f-4fcd-a302-e532c53d010e], this_pdev_info=[data_offset=8.57mb, size=1.99gb, pdev_id=3 max_pdev_chunks=128 dev_attr=[phys_page_size=4kb, align_size=512, atomic_phys_page_size=4kb, num_streams=1] mirror_super_block?=false]] total_super_blk_size=602112
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:500:compose_vparam] New Virtal Dev=meta of size=102.32mb with id=0 is attempted to be created with multi_pdev_opts=ALL_PDEV_STRIPED. The params are adjusted as follows: VDev_Size=102.32mb Num_pdevs=1 Total_chunks_across_all_pdevs=1 Each_Chunk_Size=102.32mb
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:542:calculate_vdev_chunk_num_on_new_pdevs] pdev /tmp/test_home_raft_log_store_1 should add 1 chunks to vdev meta , expect_chunk_num_on_pdev=1, available_chunks_on_pdev=19, pdev_size=2145865728
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:381:create_vdev] 1 chunks is created on pdev /tmp/test_home_raft_log_store_1 for vdev meta, pdev data size is 2145865728
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:553:add_pdev_to_vdev] Add pdev /tmp/test_home_raft_log_store_1 to vdev meta, chunks_on_pdev=1
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:388:create_vdev] 1 chunks is created for vdev meta, expected 1
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:399:create_vdev] Virtal Dev=meta of size=102.32mb successfully created
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:500:compose_vparam] New Virtal Dev=LogDev of size=0 with id=1 is attempted to be created with multi_pdev_opts=ALL_PDEV_STRIPED. The params are adjusted as follows: VDev_Size=0 Num_pdevs=1 Total_chunks_across_all_pdevs=0 Each_Chunk_Size=32mb
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:542:calculate_vdev_chunk_num_on_new_pdevs] pdev /tmp/test_home_raft_log_store_1 should add 0 chunks to vdev LogDev , expect_chunk_num_on_pdev=0, available_chunks_on_pdev=63, pdev_size=2145865728
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:388:create_vdev] 0 chunks is created for vdev LogDev, expected 0
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [journal_vdev.cpp:137:init] Journal vdev init done
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:399:create_vdev] Virtal Dev=LogDev of size=0 successfully created
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [homestore.cpp:284:do_start] HomeStore starting first_time_boot?=true dynamic_config_version=1, cache_size=628138966, static_config: {
+[2026-02-04T01:05:05.532Z]     "GenericConfig": {
+[2026-02-04T01:05:05.532Z]         "max_blks_in_blkentry": 1,
+[2026-02-04T01:05:05.532Z]         "max_chunks": 128,
+[2026-02-04T01:05:05.532Z]         "max_pdevs": 8,
+[2026-02-04T01:05:05.532Z]         "max_vdevs": 16
+[2026-02-04T01:05:05.532Z]     },
+[2026-02-04T01:05:05.532Z]     "InputParameters": {
+[2026-02-04T01:05:05.532Z]         "app_mem_size": "921.60mb",
+[2026-02-04T01:05:05.532Z]         "auto_recovery?": true,
+[2026-02-04T01:05:05.532Z]         "data_open_flags": 1,
+[2026-02-04T01:05:05.532Z]         "devices": [
+[2026-02-04T01:05:05.532Z]             "/tmp/test_home_raft_log_store_1 - Fast size=0",
+[2026-02-04T01:05:05.532Z]             "/tmp/test_home_raft_log_store_2 - Data size=0",
+[2026-02-04T01:05:05.532Z]             "/tmp/test_home_raft_log_store_3 - Data size=0"
+[2026-02-04T01:05:05.532Z]         ],
+[2026-02-04T01:05:05.532Z]         "fast_open_flags": 1,
+[2026-02-04T01:05:05.532Z]         "hugepage_size": "0",
+[2026-02-04T01:05:05.532Z]         "is_read_only": false
+[2026-02-04T01:05:05.532Z]     }
+[2026-02-04T01:05:05.532Z] }
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [meta_blk_service.cpp:89:start] Initialize MetaBlkStore with total size=102.32mb, used size=0, need_format=true
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [meta_blk_service.cpp:212:write_ssb] Successfully write m_ssb to disk: magic: 2882391789, version: 1, next_bid: Invalid_Blkid, self_bid: blk#=0 count=1 chunk=0
+[2026-02-04T01:05:05.532Z] [02/03/26 18:04:38-07:00] [info] [6153] [meta_blk_service.cpp:212:write_ssb] Successfully write m_ssb to disk: magic: 2882391789, version: 1, next_bid: blk#=1 count=1 chunk=0, self_bid: blk#=0 count=1 chunk=0
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6199] [reactor.hpp:51:IOThreadMetrics] Registring metrics group name = IOThreadMetrics, thread_name = log_flush_thread
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6199] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring per-thread timer fd 39 and adding it into fd poll list
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:313:commit_formatting] commit formatting  first block with gen_number=1
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [device_manager.cpp:332:commit_formatting] HomeStore formatting is committed on all physical devices
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [cp_mgr.cpp:98:start_timer] cp timer is set to 60000000 usec
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6196] [iomgr_timer.cpp:179:setup_timer_fd] Creating recurring per-thread timer fd 42 and adding it into fd poll list
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [resource_mgr.cpp:82:start_timer] resource audit timer is set to 120000 ms
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [iomgr_timer.cpp:179:setup_timer_fd] Creating recurring global timer fd 43 and adding it into fd poll list
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [log_store_service.cpp:199:create_new_logdev_internal] Created logdev 1
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [log_store_service.cpp:199:create_new_logdev_internal] Created logdev 2
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [test_home_raft_logstore.cpp:216:TestBody] Step 1: Append and test 1000 records
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [test_home_raft_logstore.cpp:219:TestBody] Step 2: Rollback half of the records
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [test_home_raft_logstore.cpp:222:TestBody] Step 3: Post rollback add 1000 records
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [test_home_raft_logstore.cpp:226:TestBody] Step 4: Compact first 10% records = 150
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [test_home_raft_logstore.cpp:229:TestBody] Step 5: Post compaction add 1000 records
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [test_home_raft_logstore.cpp:233:TestBody] Step 6: Compaction 10% records=2587 beyond max appended entries test
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [test_home_raft_logstore.cpp:236:TestBody] Step 7: Post compaction add 1000 records
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:38-07:00] [info] [6153] [test_home_raft_logstore.cpp:239:TestBody] Step 8: Pack all records
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:39-07:00] [info] [6153] [test_home_raft_logstore.cpp:242:TestBody] Step 9: Unpack all records on an empty logstore
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:39-07:00] [info] [6153] [test_home_raft_logstore.cpp:245:TestBody] Step 10: Append more 1000 records to follower logstore
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:39-07:00] [info] [6153] [test_home_raft_logstore.cpp:248:TestBody] Step 11: Unpack same leader records again after append inserted records
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:40-07:00] [info] [6153] [test_home_raft_logstore.cpp:251:TestBody] Step 12: Restart homestore and validate recovery
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:40-07:00] [info] [6153] [homestore.cpp:324:shutdown] Homestore shutdown is started
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:40-07:00] [info] [6153] [resource_mgr.cpp:34:stop] Cancel resource manager timer.
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:40-07:00] [info] [6153] [iomgr_timer.cpp:126:operator()] Removing recurring global timer fd 43 device
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:40-07:00] [info] [6153] [cp_mgr.cpp:120:shutdown] Stopping cp timer
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:40-07:00] [info] [6196] [iomgr_timer.cpp:126:operator()] Removing recurring per-thread timer fd 42 device
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:40-07:00] [info] [6153] [cp_mgr.cpp:128:shutdown] Trigger cp flush at CP shutdown
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:40-07:00] [info] [6153] [cp_mgr.cpp:137:shutdown] Trigger cp done
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:40-07:00] [info] [6153] [iomgr_timer.cpp:126:operator()] Removing recurring global timer fd 23 device
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:40-07:00] [info] [6153] [homestore.cpp:379:shutdown] Homestore is completed its shutdown
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:40-07:00] [info] [6153] [iomgr.cpp:190:stop] Stopping IOManager
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:40-07:00] [info] [6153] [iomgr.cpp:217:stop] All IO threads have stopped and hence IOManager is moved to stopped state, joining any iomanager threads
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:40-07:00] [info] [6153] [iomgr.cpp:242:stop] IOManager Stopped and all IO threads are relinquished
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [homestore_test_common.hpp:424:do_start_homestore] Starting iomgr with 2 threads, spdk: false
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [iomgr.cpp:110:start] Starting IOManager version 12.0.2 with 2 threads [is_spdk=false] [mem_limit=512mb, hugepage=0]
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6205] [reactor.hpp:51:IOThreadMetrics] Registring metrics group name = IOThreadMetrics, thread_name = iomgr_thread_0
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6206] [reactor.hpp:51:IOThreadMetrics] Registring metrics group name = IOThreadMetrics, thread_name = iomgr_thread_1
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6205] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring per-thread timer fd 8 and adding it into fd poll list
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6206] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring per-thread timer fd 13 and adding it into fd poll list
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6205] [iomgr.cpp:359:reactor_started] All Worker reactors started, moving iomanager to sys_init state
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring global timer fd 16 and adding it into fd poll list
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring global timer fd 17 and adding it into fd poll list
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [iomgr.cpp:181:start] IOManager is ready and move to running state
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [homestore_test_common.hpp:88:generate_random_http_port] random port generated = 98807
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [homestore_test_common.hpp:79:set_fixed_http_port] http port = 98807
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [homestore_test_common.hpp:435:do_start_homestore] Initialize and start HomeStore with app_mem_size = 921.60mb
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [homestore.cpp:169:start] Homestore is loading with following services: meta,log,
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [cp_mgr.cpp:433:CPWatchdog] CP watchdog timer setting to : 10 seconds
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [iomgr_timer.cpp:179:setup_timer_fd] Creating recurring global timer fd 24 and adding it into fd poll list
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6209] [reactor.hpp:51:IOThreadMetrics] Registring metrics group name = IOThreadMetrics, thread_name = cp_timer_thread
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6209] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring per-thread timer fd 27 and adding it into fd poll list
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [cp_mgr.cpp:355:start_cp_thread] Starting CP IO fibers with count: 2
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6210] [reactor.hpp:51:IOThreadMetrics] Registring metrics group name = IOThreadMetrics, thread_name = cp_io
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6210] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring per-thread timer fd 32 and adding it into fd poll list
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [physical_dev.cpp:89:PhysicalDev] Opening device /tmp/test_home_raft_log_store_1 with DIRECT_IO mode.
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [physical_dev.cpp:110:PhysicalDev] Device /tmp/test_home_raft_log_store_1 opened with dev_id=35 size=2gb
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [device_manager.cpp:219:load_devices] Loading Homestore from Device=/tmp/test_home_raft_log_store_1 with first block as: [magic=0xabbecdcd, checksum=701226939, first_blk_header=[gen_number=1, version=5, product_name=HomeStore4x system_uuid=fbed0212-f47f-4fcd-a302-e532c53d010e], this_pdev_info=[data_offset=1.54mb, size=2.00gb, pdev_id=1 max_pdev_chunks=64 dev_attr=[phys_page_size=4kb, align_size=512, atomic_phys_page_size=4kb, num_streams=1] mirror_super_block?=false]]
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [physical_dev.cpp:89:PhysicalDev] Opening device /tmp/test_home_raft_log_store_2 with DIRECT_IO mode.
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [physical_dev.cpp:110:PhysicalDev] Device /tmp/test_home_raft_log_store_2 opened with dev_id=36 size=2gb
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [device_manager.cpp:219:load_devices] Loading Homestore from Device=/tmp/test_home_raft_log_store_2 with first block as: [magic=0xabbecdcd, checksum=1097876694, first_blk_header=[gen_number=1, version=5, product_name=HomeStore4x system_uuid=fbed0212-f47f-4fcd-a302-e532c53d010e], this_pdev_info=[data_offset=8.57mb, size=1.99gb, pdev_id=2 max_pdev_chunks=128 dev_attr=[phys_page_size=4kb, align_size=512, atomic_phys_page_size=4kb, num_streams=1] mirror_super_block?=false]]
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [physical_dev.cpp:89:PhysicalDev] Opening device /tmp/test_home_raft_log_store_3 with DIRECT_IO mode.
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [physical_dev.cpp:110:PhysicalDev] Device /tmp/test_home_raft_log_store_3 opened with dev_id=37 size=2gb
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [device_manager.cpp:219:load_devices] Loading Homestore from Device=/tmp/test_home_raft_log_store_3 with first block as: [magic=0xabbecdcd, checksum=1478520021, first_blk_header=[gen_number=1, version=5, product_name=HomeStore4x system_uuid=fbed0212-f47f-4fcd-a302-e532c53d010e], this_pdev_info=[data_offset=8.57mb, size=1.99gb, pdev_id=3 max_pdev_chunks=128 dev_attr=[phys_page_size=4kb, align_size=512, atomic_phys_page_size=4kb, num_streams=1] mirror_super_block?=false]]
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [journal_vdev.cpp:137:init] Journal vdev init done
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [homestore.cpp:284:do_start] HomeStore starting first_time_boot?=false dynamic_config_version=1, cache_size=628138966, static_config: {
+[2026-02-04T01:05:05.533Z]     "GenericConfig": {
+[2026-02-04T01:05:05.533Z]         "max_blks_in_blkentry": 1,
+[2026-02-04T01:05:05.533Z]         "max_chunks": 128,
+[2026-02-04T01:05:05.533Z]         "max_pdevs": 8,
+[2026-02-04T01:05:05.533Z]         "max_vdevs": 16
+[2026-02-04T01:05:05.533Z]     },
+[2026-02-04T01:05:05.533Z]     "InputParameters": {
+[2026-02-04T01:05:05.533Z]         "app_mem_size": "921.60mb",
+[2026-02-04T01:05:05.533Z]         "auto_recovery?": true,
+[2026-02-04T01:05:05.533Z]         "data_open_flags": 1,
+[2026-02-04T01:05:05.533Z]         "devices": [
+[2026-02-04T01:05:05.533Z]             "/tmp/test_home_raft_log_store_1 - Fast size=0",
+[2026-02-04T01:05:05.533Z]             "/tmp/test_home_raft_log_store_2 - Data size=0",
+[2026-02-04T01:05:05.533Z]             "/tmp/test_home_raft_log_store_3 - Data size=0"
+[2026-02-04T01:05:05.533Z]         ],
+[2026-02-04T01:05:05.533Z]         "fast_open_flags": 1,
+[2026-02-04T01:05:05.533Z]         "hugepage_size": "0",
+[2026-02-04T01:05:05.533Z]         "is_read_only": false
+[2026-02-04T01:05:05.533Z]     }
+[2026-02-04T01:05:05.533Z] }
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [meta_blk_service.cpp:89:start] Initialize MetaBlkStore with total size=102.32mb, used size=0, need_format=false
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [meta_blk_service.cpp:156:load_ssb] Successfully loaded meta ssb from disk: magic: 2882391789, version: 1, next_bid: blk#=1 count=1 chunk=0, self_bid: blk#=0 count=1 chunk=0
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6212] [reactor.hpp:51:IOThreadMetrics] Registring metrics group name = IOThreadMetrics, thread_name = log_flush_thread
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6212] [iomgr_timer.cpp:179:setup_timer_fd] Creating non-recurring per-thread timer fd 40 and adding it into fd poll list
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [cp_mgr.cpp:98:start_timer] cp timer is set to 60000000 usec
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6209] [iomgr_timer.cpp:179:setup_timer_fd] Creating recurring per-thread timer fd 44 and adding it into fd poll list
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [resource_mgr.cpp:82:start_timer] resource audit timer is set to 120000 ms
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:45-07:00] [info] [6153] [iomgr_timer.cpp:179:setup_timer_fd] Creating recurring global timer fd 45 and adding it into fd poll list
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:47-07:00] [info] [6153] [test_home_raft_logstore.cpp:256:TestBody] Step 13: Post recovery do append test
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:47-07:00] [info] [6153] [homestore.cpp:324:shutdown] Homestore shutdown is started
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:47-07:00] [info] [6153] [resource_mgr.cpp:34:stop] Cancel resource manager timer.
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:47-07:00] [info] [6153] [iomgr_timer.cpp:126:operator()] Removing recurring global timer fd 45 device
+[2026-02-04T01:05:05.533Z] =================================================================
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:47-07:00] [info] [6153] [cp_mgr.cpp:120:shutdown] Stopping cp timer
+[2026-02-04T01:05:05.533Z] ==6153==ERROR: AddressSanitizer: heap-use-after-free on address 0x5140002ee730 at pc 0x55cabbbc2554 bp 0x7f850b74cd00 sp 0x7f850b74ccf0
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:47-07:00] [info] [6209] [iomgr_timer.cpp:126:operator()] Removing recurring per-thread timer fd 44 device
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:47-07:00] [info] [6153] [cp_mgr.cpp:128:shutdown] Trigger cp flush at CP shutdown
+[2026-02-04T01:05:05.533Z] READ of size 8 at 0x5140002ee730 thread T47
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:47-07:00] [info] [6153] [cp_mgr.cpp:137:shutdown] Trigger cp done
+[2026-02-04T01:05:05.533Z] [02/03/26 18:04:47-07:00] [info] [6153] [iomgr_timer.cpp:126:operator()] Removing recurring global timer fd 24 device
+[2026-02-04T01:05:05.533Z]     #0 0x55cabbbc2553 in std::_Function_base::_M_empty() const /usr/include/c++/13/bits/std_function.h:247
+[2026-02-04T01:05:05.533Z]     #1 0x55cabd640c76 in std::function<void (homestore::logstore_req*, homestore::logdev_key)>::operator bool() const /usr/include/c++/13/bits/std_function.h:574
+[2026-02-04T01:05:05.534Z]     #2 0x55cabd639166 in std::function<void (homestore::logstore_req*, homestore::logdev_key)>::function(std::function<void (homestore::logstore_req*, homestore::logdev_key)> const&) /usr/include/c++/13/bits/std_function.h:389
+[2026-02-04T01:05:05.534Z]     #3 0x55cabd631294 in homestore::HomeLogStore::get_comp_cb() const /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/include/homestore/logstore/log_store.hpp:284
+[2026-02-04T01:05:05.534Z]     #4 0x55cabd5c20ee in operator() /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/lib/logstore/log_dev.cpp:588
+[2026-02-04T01:05:05.534Z]     #5 0x55cabd5c24c8 in operator() /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/lib/logstore/log_dev.cpp:599
+[2026-02-04T01:05:05.534Z]     #6 0x55cabd629599 in __invoke_impl<void, homestore::LogDev::on_flush_completion(homestore::LogGroup*)::<lambda()>&> /usr/include/c++/13/bits/invoke.h:61
+[2026-02-04T01:05:05.534Z]     #7 0x55cabd629152 in __invoke_r<void, homestore::LogDev::on_flush_completion(homestore::LogGroup*)::<lambda()>&> /usr/include/c++/13/bits/invoke.h:111
+[2026-02-04T01:05:05.534Z]     #8 0x55cabd628769 in _M_invoke /usr/include/c++/13/bits/std_function.h:290
+[2026-02-04T01:05:05.534Z]     #9 0x55cabbc9165b in std::function<void ()>::operator()() const /usr/include/c++/13/bits/std_function.h:591
+[2026-02-04T01:05:05.534Z]     #10 0x55cabd8d6a58 in iomgr::IOReactor::handle_msg(iomgr::iomgr_msg*) /home/jenkins/.conan2/p/b/iomgr0081b56ee51fd/b/src/lib/reactor/reactor.cpp:251
+[2026-02-04T01:05:05.534Z]     #11 0x55cabd8c48dd in iomgr::IOReactorEPoll::process_messages() /home/jenkins/.conan2/p/b/iomgr0081b56ee51fd/b/src/lib/epoll/reactor_epoll.cpp:236
+[2026-02-04T01:05:05.534Z]     #12 0x55cabd8c3ca6 in iomgr::IOReactorEPoll::on_msg_fd_notification() /home/jenkins/.conan2/p/b/iomgr0081b56ee51fd/b/src/lib/epoll/reactor_epoll.cpp:222
+[2026-02-04T01:05:05.534Z]     #13 0x55cabd8c0f73 in iomgr::IOReactorEPoll::listen() /home/jenkins/.conan2/p/b/iomgr0081b56ee51fd/b/src/lib/epoll/reactor_epoll.cpp:137
+[2026-02-04T01:05:05.534Z]     #14 0x55cabd8d56cd in iomgr::IOReactor::listen_once() /home/jenkins/.conan2/p/b/iomgr0081b56ee51fd/b/src/lib/reactor/reactor.cpp:115
+[2026-02-04T01:05:05.534Z]     #15 0x55cabd8d4b57 in iomgr::IOReactor::run(int, unsigned long, unsigned int, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::function<bool (std::shared_ptr<iomgr::IODevice const> const&)> const&, std::function<void (bool)>&&) /home/jenkins/.conan2/p/b/iomgr0081b56ee51fd/b/src/lib/reactor/reactor.cpp:70
+[2026-02-04T01:05:05.534Z]     #16 0x55cabd8032ef in iomgr::IOManager::_run_io_loop(int, unsigned long, unsigned int, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::function<bool (std::shared_ptr<iomgr::IODevice const> const&)> const&, std::function<void (bool)>&&) /home/jenkins/.conan2/p/b/iomgr0081b56ee51fd/b/src/lib/iomgr.cpp:346
+[2026-02-04T01:05:05.534Z]     #17 0x55cabd8ba91b in operator() /home/jenkins/.conan2/p/b/iomgr0081b56ee51fd/b/src/lib/epoll/iomgr_impl_epoll.cpp:17
+[2026-02-04T01:05:05.534Z]     #18 0x55cabd8bb4fb in __invoke_impl<void, iomgr::IOManagerEpollImpl::create_reactor_impl(const std::string&, iomgr::loop_type_t, uint32_t, int, iomgr::thread_state_notifier_t&&)::<lambda()> > /usr/include/c++/13/bits/invoke.h:61
+[2026-02-04T01:05:05.534Z]     #19 0x55cabd8bb4be in __invoke<iomgr::IOManagerEpollImpl::create_reactor_impl(const std::string&, iomgr::loop_type_t, uint32_t, int, iomgr::thread_state_notifier_t&&)::<lambda()> > /usr/include/c++/13/bits/invoke.h:96
+[2026-02-04T01:05:05.534Z]     #20 0x55cabd8bb46b in _M_invoke<0> /usr/include/c++/13/bits/std_thread.h:292
+[2026-02-04T01:05:05.534Z]     #21 0x55cabd8bb43f in operator() /usr/include/c++/13/bits/std_thread.h:299
+[2026-02-04T01:05:05.534Z]     #22 0x55cabd8bb423 in _M_run /usr/include/c++/13/bits/std_thread.h:244
+[2026-02-04T01:05:05.534Z]     #23 0x7f8512ba4db3  (/lib/x86_64-linux-gnu/libstdc++.so.6+0xecdb3) (BuildId: ca77dae775ec87540acd7218fa990c40d1c94ab1)
+[2026-02-04T01:05:05.534Z]     #24 0x7f8512d99a41 in asan_thread_start ../../../../src/libsanitizer/asan/asan_interceptors.cpp:234
+[2026-02-04T01:05:05.534Z]     #25 0x7f8512213aa3  (/lib/x86_64-linux-gnu/libc.so.6+0x9caa3) (BuildId: 8e9fd827446c24067541ac5390e6f527fb5947bb)
+[2026-02-04T01:05:05.534Z]     #26 0x7f85122a0c6b  (/lib/x86_64-linux-gnu/libc.so.6+0x129c6b) (BuildId: 8e9fd827446c24067541ac5390e6f527fb5947bb)
+[2026-02-04T01:05:05.534Z]
+[2026-02-04T01:05:05.534Z] 0x5140002ee730 is located 240 bytes inside of 416-byte region [0x5140002ee640,0x5140002ee7e0)
+[2026-02-04T01:05:05.534Z] freed by thread T0 here:
+[2026-02-04T01:05:05.534Z]     #0 0x7f8512e3a5e8 in operator delete(void*, unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:164
+[2026-02-04T01:05:05.534Z]     #1 0x55cabd6ac3df in std::__new_allocator<std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2> >::deallocate(std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2>*, unsigned long) /usr/include/c++/13/bits/new_allocator.h:172
+[2026-02-04T01:05:05.534Z]     #2 0x55cabd69b390 in std::allocator<std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2> >::deallocate(std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2>*, unsigned long) /usr/include/c++/13/bits/allocator.h:210
+[2026-02-04T01:05:05.534Z]     #3 0x55cabd69b390 in std::allocator_traits<std::allocator<std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2> > >::deallocate(std::allocator<std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2> >&, std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2>*, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:517
+[2026-02-04T01:05:05.534Z]     #4 0x55cabd69b390 in std::__allocated_ptr<std::allocator<std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2> > >::~__allocated_ptr() /usr/include/c++/13/bits/allocated_ptr.h:74
+[2026-02-04T01:05:05.534Z]     #5 0x55cabd6b1811 in std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2>::_M_destroy() /usr/include/c++/13/bits/shared_ptr_base.h:623
+[2026-02-04T01:05:05.534Z]     #6 0x55cabbcd49c4 in std::_Sp_counted_base<(__gnu_cxx::_Lock_policy)2>::_M_release_last_use() (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8e3e9c4) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.534Z]     #7 0x55cabbc7d079 in std::_Sp_counted_base<(__gnu_cxx::_Lock_policy)2>::_M_release_last_use_cold() (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8de7079) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.534Z]     #8 0x55cabbbbfcfc in std::_Sp_counted_base<(__gnu_cxx::_Lock_policy)2>::_M_release() (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8d29cfc) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.534Z]     #9 0x55cabbc7e03f in std::__shared_count<(__gnu_cxx::_Lock_policy)2>::~__shared_count() (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8de803f) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.534Z]     #10 0x55cabc685890 in std::__shared_ptr<homestore::HomeLogStore, (__gnu_cxx::_Lock_policy)2>::~__shared_ptr() /usr/include/c++/13/bits/shared_ptr_base.h:1524
+[2026-02-04T01:05:05.534Z]     #11 0x55cabc6858e8 in std::shared_ptr<homestore::HomeLogStore>::~shared_ptr() /usr/include/c++/13/bits/shared_ptr.h:175
+[2026-02-04T01:05:05.534Z]     #12 0x55cabd638324 in homestore::logstore_info::~logstore_info() /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/lib/logstore/log_dev.hpp:567
+[2026-02-04T01:05:05.534Z]     #13 0x55cabd6a15f4 in std::pair<unsigned int const, homestore::logstore_info>::~pair() /usr/include/c++/13/bits/stl_pair.h:187
+[2026-02-04T01:05:05.534Z]     #14 0x55cabd6a1631 in void std::destroy_at<std::pair<unsigned int const, homestore::logstore_info> >(std::pair<unsigned int const, homestore::logstore_info>*) /usr/include/c++/13/bits/stl_construct.h:88
+[2026-02-04T01:05:05.534Z]     #15 0x55cabd678d33 in void std::allocator_traits<std::allocator<std::__detail::_Hash_node<std::pair<unsigned int const, homestore::logstore_info>, false> > >::destroy<std::pair<unsigned int const, homestore::logstore_info> >(std::allocator<std::__detail::_Hash_node<std::pair<unsigned int const, homestore::logstore_info>, false> >&, std::pair<unsigned int const, homestore::logstore_info>*) /usr/include/c++/13/bits/alloc_traits.h:560
+[2026-02-04T01:05:05.534Z]     #16 0x55cabd678d33 in std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<unsigned int const, homestore::logstore_info>, false> > >::_M_deallocate_node(std::__detail::_Hash_node<std::pair<unsigned int const, homestore::logstore_info>, false>*) /usr/include/c++/13/bits/hashtable_policy.h:2011
+[2026-02-04T01:05:05.534Z]     #17 0x55cabd66290f in std::__detail::_Hashtable_alloc<std::allocator<std::__detail::_Hash_node<std::pair<unsigned int const, homestore::logstore_info>, false> > >::_M_deallocate_nodes(std::__detail::_Hash_node<std::pair<unsigned int const, homestore::logstore_info>, false>*) /usr/include/c++/13/bits/hashtable_policy.h:2033
+[2026-02-04T01:05:05.534Z]     #18 0x55cabd64d166 in std::_Hashtable<unsigned int, std::pair<unsigned int const, homestore::logstore_info>, std::allocator<std::pair<unsigned int const, homestore::logstore_info> >, std::__detail::_Select1st, std::equal_to<unsigned int>, std::hash<unsigned int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::clear() /usr/include/c++/13/bits/hashtable.h:2524
+[2026-02-04T01:05:05.534Z]     #19 0x55cabd63bfca in std::unordered_map<unsigned int, homestore::logstore_info, std::hash<unsigned int>, std::equal_to<unsigned int>, std::allocator<std::pair<unsigned int const, homestore::logstore_info> > >::clear() /usr/include/c++/13/bits/unordered_map.h:798
+[2026-02-04T01:05:05.534Z]     #20 0x55cabd591add in homestore::LogDev::stop() /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/lib/logstore/log_dev.cpp:163
+[2026-02-04T01:05:05.534Z]     #21 0x55cabc64792b in homestore::LogStoreService::stop() /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/lib/logstore/log_store_service.cpp:130
+[2026-02-04T01:05:05.534Z]     #22 0x55cabbf8c148 in homestore::HomeStore::shutdown() /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/lib/homestore.cpp:339
+[2026-02-04T01:05:05.534Z]     #23 0x55cabbc5cc55 in test_common::HSTestHelper::shutdown_homestore(bool) (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8dc6c55) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.534Z]     #24 0x55cabbc7a209 in TestRaftLogStore::TearDown() (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8de4209) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.534Z]     #25 0x55cabefd03c2 in void testing::internal::HandleSehExceptionsInMethodIfSupported<testing::Test, void>(testing::Test*, void (testing::Test::*)(), char const*) /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2664
+[2026-02-04T01:05:05.534Z]     #26 0x55cabefc991e in void testing::internal::HandleExceptionsInMethodIfSupported<testing::Test, void>(testing::Test*, void (testing::Test::*)(), char const*) /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2700
+[2026-02-04T01:05:05.534Z]     #27 0x55cabefa398d in testing::Test::Run() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2747
+[2026-02-04T01:05:05.534Z]     #28 0x55cabefa43f9 in testing::TestInfo::Run() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2885
+[2026-02-04T01:05:05.534Z]     #29 0x55cabefa4dd0 in testing::TestSuite::Run() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:3063
+[2026-02-04T01:05:05.534Z]     #30 0x55cabefb53e2 in testing::internal::UnitTestImpl::RunAllTests() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:6054
+[2026-02-04T01:05:05.534Z]     #31 0x55cabefd1781 in bool testing::internal::HandleSehExceptionsInMethodIfSupported<testing::internal::UnitTestImpl, bool>(testing::internal::UnitTestImpl*, bool (testing::internal::UnitTestImpl::*)(), char const*) /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2664
+[2026-02-04T01:05:05.534Z]     #32 0x55cabefcab90 in bool testing::internal::HandleExceptionsInMethodIfSupported<testing::internal::UnitTestImpl, bool>(testing::internal::UnitTestImpl*, bool (testing::internal::UnitTestImpl::*)(), char const*) /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2700
+[2026-02-04T01:05:05.534Z]
+[2026-02-04T01:05:05.534Z] previously allocated by thread T0 here:
+[2026-02-04T01:05:05.534Z]     #0 0x7f8512e39548 in operator new(unsigned long) ../../../../src/libsanitizer/asan/asan_new_delete.cpp:95
+[2026-02-04T01:05:05.534Z]     #1 0x55cabd6ac39a in std::__new_allocator<std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2> >::allocate(unsigned long, void const*) /usr/include/c++/13/bits/new_allocator.h:151
+[2026-02-04T01:05:05.534Z]     #2 0x55cabd69b15e in std::allocator<std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2> >::allocate(unsigned long) /usr/include/c++/13/bits/allocator.h:198
+[2026-02-04T01:05:05.534Z]     #3 0x55cabd69b15e in std::allocator_traits<std::allocator<std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2> > >::allocate(std::allocator<std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2> >&, unsigned long) /usr/include/c++/13/bits/alloc_traits.h:482
+[2026-02-04T01:05:05.534Z]     #4 0x55cabd69b15e in std::__allocated_ptr<std::allocator<std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2> > > std::__allocate_guarded<std::allocator<std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2> > >(std::allocator<std::_Sp_counted_ptr_inplace<homestore::HomeLogStore, std::allocator<void>, (__gnu_cxx::_Lock_policy)2> >&) /usr/include/c++/13/bits/allocated_ptr.h:98
+[2026-02-04T01:05:05.534Z]     #5 0x55cabd690d5c in std::__shared_count<(__gnu_cxx::_Lock_policy)2>::__shared_count<homestore::HomeLogStore, std::allocator<void>, std::shared_ptr<homestore::LogDev>, unsigned int&, bool&, long const&>(homestore::HomeLogStore*&, std::_Sp_alloc_shared_tag<std::allocator<void> >, std::shared_ptr<homestore::LogDev>&&, unsigned int&, bool&, long const&) /usr/include/c++/13/bits/shared_ptr_base.h:969
+[2026-02-04T01:05:05.534Z]     #6 0x55cabd673089 in std::__shared_ptr<homestore::HomeLogStore, (__gnu_cxx::_Lock_policy)2>::__shared_ptr<std::allocator<void>, std::shared_ptr<homestore::LogDev>, unsigned int&, bool&, long const&>(std::_Sp_alloc_shared_tag<std::allocator<void> >, std::shared_ptr<homestore::LogDev>&&, unsigned int&, bool&, long const&) /usr/include/c++/13/bits/shared_ptr_base.h:1712
+[2026-02-04T01:05:05.535Z]     #7 0x55cabd65dd36 in std::shared_ptr<homestore::HomeLogStore>::shared_ptr<std::allocator<void>, std::shared_ptr<homestore::LogDev>, unsigned int&, bool&, long const&>(std::_Sp_alloc_shared_tag<std::allocator<void> >, std::shared_ptr<homestore::LogDev>&&, unsigned int&, bool&, long const&) /usr/include/c++/13/bits/shared_ptr.h:464
+[2026-02-04T01:05:05.535Z]     #8 0x55cabd64417f in std::shared_ptr<homestore::HomeLogStore> std::make_shared<homestore::HomeLogStore, std::shared_ptr<homestore::LogDev>, unsigned int&, bool&, long const&>(std::shared_ptr<homestore::LogDev>&&, unsigned int&, bool&, long const&) /usr/include/c++/13/bits/shared_ptr.h:1010
+[2026-02-04T01:05:05.535Z]     #9 0x55cabd5d3496 in homestore::LogDev::on_log_store_found(unsigned int, homestore::logstore_superblk const&) /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/lib/logstore/log_dev.cpp:784
+[2026-02-04T01:05:05.535Z]     #10 0x55cabd58a1dc in homestore::LogDev::start(bool, std::shared_ptr<homestore::JournalVirtualDev>) /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/lib/logstore/log_dev.cpp:79
+[2026-02-04T01:05:05.535Z]     #11 0x55cabc6474ca in homestore::LogStoreService::start(bool) /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/lib/logstore/log_store_service.cpp:118
+[2026-02-04T01:05:05.535Z]     #12 0x55cabbf8aac9 in homestore::HomeStore::do_start() /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/lib/homestore.cpp:300
+[2026-02-04T01:05:05.535Z]     #13 0x55cabbf83449 in homestore::HomeStore::start(homestore::hs_input_params const&, std::function<void ()>) /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/lib/homestore.cpp:197
+[2026-02-04T01:05:05.535Z]     #14 0x55cabbc64374 in test_common::HSTestHelper::do_start_homestore(bool, bool, unsigned int) (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8dce374) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.535Z]     #15 0x55cabbc5c93f in test_common::HSTestHelper::restart_homestore(unsigned int) (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8dc693f) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.535Z]     #16 0x55cabbc79f53 in TestRaftLogStore::restart() (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8de3f53) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.535Z]     #17 0x55cabbbb5f20 in TestRaftLogStore_lifecycle_test_Test::TestBody() /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/tests/test_home_raft_logstore.cpp:252
+[2026-02-04T01:05:05.535Z]     #18 0x55cabefd03c2 in void testing::internal::HandleSehExceptionsInMethodIfSupported<testing::Test, void>(testing::Test*, void (testing::Test::*)(), char const*) /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2664
+[2026-02-04T01:05:05.535Z]     #19 0x55cabefc991e in void testing::internal::HandleExceptionsInMethodIfSupported<testing::Test, void>(testing::Test*, void (testing::Test::*)(), char const*) /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2700
+[2026-02-04T01:05:05.535Z]     #20 0x55cabefa393b in testing::Test::Run() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2739
+[2026-02-04T01:05:05.535Z]     #21 0x55cabefa43f9 in testing::TestInfo::Run() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2885
+[2026-02-04T01:05:05.535Z]     #22 0x55cabefa4dd0 in testing::TestSuite::Run() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:3063
+[2026-02-04T01:05:05.535Z]     #23 0x55cabefb53e2 in testing::internal::UnitTestImpl::RunAllTests() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:6054
+[2026-02-04T01:05:05.535Z]     #24 0x55cabefd1781 in bool testing::internal::HandleSehExceptionsInMethodIfSupported<testing::internal::UnitTestImpl, bool>(testing::internal::UnitTestImpl*, bool (testing::internal::UnitTestImpl::*)(), char const*) /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2664
+[2026-02-04T01:05:05.535Z]     #25 0x55cabefcab90 in bool testing::internal::HandleExceptionsInMethodIfSupported<testing::internal::UnitTestImpl, bool>(testing::internal::UnitTestImpl*, bool (testing::internal::UnitTestImpl::*)(), char const*) /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2700
+[2026-02-04T01:05:05.535Z]     #26 0x55cabefb33d7 in testing::UnitTest::Run() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:5594
+[2026-02-04T01:05:05.535Z]     #27 0x55cabbbc338d in RUN_ALL_TESTS() (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8d2d38d) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.535Z]     #28 0x55cabbbb787f in main /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/tests/test_home_raft_logstore.cpp:275
+[2026-02-04T01:05:05.535Z]     #29 0x7f85121a11c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 8e9fd827446c24067541ac5390e6f527fb5947bb)
+[2026-02-04T01:05:05.535Z]     #30 0x7f85121a128a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 8e9fd827446c24067541ac5390e6f527fb5947bb)
+[2026-02-04T01:05:05.535Z]     #31 0x55cabbba9ee4 in _start (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8d13ee4) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.535Z]
+[2026-02-04T01:05:05.535Z] Thread T47 created by T0 here:
+[2026-02-04T01:05:05.535Z]     #0 0x7f8512e301f9 in pthread_create ../../../../src/libsanitizer/asan/asan_interceptors.cpp:245
+[2026-02-04T01:05:05.535Z]     #1 0x7f8512ba4eb0 in std::thread::_M_start_thread(std::unique_ptr<std::thread::_State, std::default_delete<std::thread::_State> >, void (*)()) (/lib/x86_64-linux-gnu/libstdc++.so.6+0xeceb0) (BuildId: ca77dae775ec87540acd7218fa990c40d1c94ab1)
+[2026-02-04T01:05:05.535Z]     #2 0x55cabd8bace8 in thread<iomgr::IOManagerEpollImpl::create_reactor_impl(const std::string&, iomgr::loop_type_t, uint32_t, int, iomgr::thread_state_notifier_t&&)::<lambda()> > /usr/include/c++/13/bits/std_thread.h:164
+[2026-02-04T01:05:05.535Z]     #3 0x55cabd8ba9e3 in named_thread<iomgr::IOManagerEpollImpl::create_reactor_impl(const std::string&, iomgr::loop_type_t, uint32_t, int, iomgr::thread_state_notifier_t&&)::<lambda()> > /home/jenkins/.conan2/p/sisl91bba22b45237/p/include/sisl/utility/thread_factory.hpp:74
+[2026-02-04T01:05:05.535Z]     #4 0x55cabd8bab0f in iomgr::IOManagerEpollImpl::create_reactor_impl(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, unsigned long, unsigned int, int, std::function<void (bool)>&&) /home/jenkins/.conan2/p/b/iomgr0081b56ee51fd/b/src/lib/epoll/iomgr_impl_epoll.cpp:18
+[2026-02-04T01:05:05.535Z]     #5 0x55cabd802127 in iomgr::IOManager::create_worker_reactors(unsigned int) /home/jenkins/.conan2/p/b/iomgr0081b56ee51fd/b/src/lib/iomgr.cpp:252
+[2026-02-04T01:05:05.535Z]     #6 0x55cabd801374 in iomgr::IOManager::start(iomgr::iomgr_params const&, std::function<void (bool)> const&, std::function<void ()>&&) /home/jenkins/.conan2/p/b/iomgr0081b56ee51fd/b/src/lib/iomgr.cpp:166
+[2026-02-04T01:05:05.535Z]     #7 0x55cabbcc84f3 in iomgr::IOEnvironment& iomgr::IOEnvironment::with_iomgr<iomgr::iomgr_params>(iomgr::iomgr_params&&) (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8e324f3) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.535Z]     #8 0x55cabbc62dcd in test_common::HSTestHelper::do_start_homestore(bool, bool, unsigned int) (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8dccdcd) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.535Z]     #9 0x55cabbc5c93f in test_common::HSTestHelper::restart_homestore(unsigned int) (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8dc693f) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.535Z]     #10 0x55cabbc79f53 in TestRaftLogStore::restart() (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8de3f53) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.535Z]     #11 0x55cabbbb5f20 in TestRaftLogStore_lifecycle_test_Test::TestBody() /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/tests/test_home_raft_logstore.cpp:252
+[2026-02-04T01:05:05.535Z]     #12 0x55cabefd03c2 in void testing::internal::HandleSehExceptionsInMethodIfSupported<testing::Test, void>(testing::Test*, void (testing::Test::*)(), char const*) /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2664
+[2026-02-04T01:05:05.535Z]     #13 0x55cabefc991e in void testing::internal::HandleExceptionsInMethodIfSupported<testing::Test, void>(testing::Test*, void (testing::Test::*)(), char const*) /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2700
+[2026-02-04T01:05:05.535Z]     #14 0x55cabefa393b in testing::Test::Run() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2739
+[2026-02-04T01:05:05.535Z]     #15 0x55cabefa43f9 in testing::TestInfo::Run() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2885
+[2026-02-04T01:05:05.535Z]     #16 0x55cabefa4dd0 in testing::TestSuite::Run() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:3063
+[2026-02-04T01:05:05.535Z]     #17 0x55cabefb53e2 in testing::internal::UnitTestImpl::RunAllTests() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:6054
+[2026-02-04T01:05:05.535Z]     #18 0x55cabefd1781 in bool testing::internal::HandleSehExceptionsInMethodIfSupported<testing::internal::UnitTestImpl, bool>(testing::internal::UnitTestImpl*, bool (testing::internal::UnitTestImpl::*)(), char const*) /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2664
+[2026-02-04T01:05:05.535Z]     #19 0x55cabefcab90 in bool testing::internal::HandleExceptionsInMethodIfSupported<testing::internal::UnitTestImpl, bool>(testing::internal::UnitTestImpl*, bool (testing::internal::UnitTestImpl::*)(), char const*) /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:2700
+[2026-02-04T01:05:05.535Z]     #20 0x55cabefb33d7 in testing::UnitTest::Run() /home/jenkins/.conan2/p/b/gtest0746bc45925e7/b/src/googletest/src/gtest.cc:5594
+[2026-02-04T01:05:05.535Z]     #21 0x55cabbbc338d in RUN_ALL_TESTS() (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8d2d38d) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.535Z]     #22 0x55cabbbb787f in main /home/jenkins/.conan2/p/b/homes70841a95d1438/b/src/tests/test_home_raft_logstore.cpp:275
+[2026-02-04T01:05:05.535Z]     #23 0x7f85121a11c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 8e9fd827446c24067541ac5390e6f527fb5947bb)
+[2026-02-04T01:05:05.535Z]     #24 0x7f85121a128a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 8e9fd827446c24067541ac5390e6f527fb5947bb)
+[2026-02-04T01:05:05.535Z]     #25 0x55cabbba9ee4 in _start (/home/jenkins/.conan2/p/b/homes70841a95d1438/b/build/Sanitized/src/tests/test_home_raft_logstore+0x8d13ee4) (BuildId: 001dea36cc992241297e283ae108dd7803f02c7e)
+[2026-02-04T01:05:05.535Z]
+[2026-02-04T01:05:05.535Z] SUMMARY: AddressSanitizer: heap-use-after-free /usr/include/c++/13/bits/std_function.h:247 in std::_Function_base::_M_empty() const
+[2026-02-04T01:05:05.535Z] Shadow bytes around the buggy address:
+[2026-02-04T01:05:05.535Z]   0x5140002ee480: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[2026-02-04T01:05:05.535Z]   0x5140002ee500: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[2026-02-04T01:05:05.535Z]   0x5140002ee580: 00 00 00 00 00 00 00 00 00 00 00 00 00 fa fa fa
+[2026-02-04T01:05:05.535Z]   0x5140002ee600: fa fa fa fa fa fa fa fa fd fd fd fd fd fd fd fd
+[2026-02-04T01:05:05.535Z]   0x5140002ee680: fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd
+[2026-02-04T01:05:05.535Z] =>0x5140002ee700: fd fd fd fd fd fd[fd]fd fd fd fd fd fd fd fd fd
+[2026-02-04T01:05:05.535Z]   0x5140002ee780: fd fd fd fd fd fd fd fd fd fd fd fd fa fa fa fa
+[2026-02-04T01:05:05.535Z]   0x5140002ee800: fa fa fa fa fa fa fa fa fd fd fd fd fd fd fd fd
+[2026-02-04T01:05:05.535Z]   0x5140002ee880: fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd
+[2026-02-04T01:05:05.535Z]   0x5140002ee900: fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd
+[2026-02-04T01:05:05.535Z]   0x5140002ee980: fd fd fd fd fd fd fd fd fd fd fd fd fa fa fa fa
+[2026-02-04T01:05:05.535Z] Shadow byte legend (one shadow byte represents 8 application bytes):
+[2026-02-04T01:05:05.535Z]   Addressable:           00
+[2026-02-04T01:05:05.535Z]   Partially addressable: 01 02 03 04 05 06 07
+[2026-02-04T01:05:05.535Z]   Heap left redzone:       fa
+[2026-02-04T01:05:05.535Z]   Freed heap region:       fd
+[2026-02-04T01:05:05.535Z]   Stack left redzone:      f1
+[2026-02-04T01:05:05.535Z]   Stack mid redzone:       f2
+[2026-02-04T01:05:05.535Z]   Stack right redzone:     f3
+[2026-02-04T01:05:05.535Z]   Stack after return:      f5
+[2026-02-04T01:05:05.535Z]   Stack use after scope:   f8
+[2026-02-04T01:05:05.535Z]   Global redzone:          f9
+[2026-02-04T01:05:05.535Z]   Global init order:       f6
+[2026-02-04T01:05:05.535Z]   Poisoned by user:        f7
+[2026-02-04T01:05:05.535Z]   Container overflow:      fc
+[2026-02-04T01:05:05.535Z]   Array cookie:            ac
+[2026-02-04T01:05:05.535Z]   Intra object redzone:    bb
+[2026-02-04T01:05:05.535Z]   ASan internal:           fe
+[2026-02-04T01:05:05.535Z]   Left alloca redzone:     ca
+[2026-02-04T01:05:05.536Z]   Right alloca redzone:    cb
+[2026-02-04T01:05:05.536Z] ==6153==ABORTING
+[2026-02-04T01:05:05.536Z]

@@ -208,6 +208,8 @@ void HomeLogStore::on_log_found(logstore_seq_num_t seq_num, const logdev_key& ld
 bool HomeLogStore::truncate(logstore_seq_num_t upto_lsn, bool in_memory_truncate_only) {
     if (is_stopping()) return false;
     incr_pending_request_num();
+    THIS_LOGSTORE_LOG(INFO, "Truncating logstore upto lsn={}, start_lsn={}, tail_lsn={}", upto_lsn, m_start_lsn.load(),
+                      m_tail_lsn.load());
     if (upto_lsn < m_start_lsn) {
         decr_pending_request_num();
         THIS_LOGSTORE_LOG(WARN, "Truncating logstore upto lsn={} , start_lsn={}, upto_lsn < m_start_lsn", upto_lsn,
@@ -248,13 +250,15 @@ bool HomeLogStore::truncate(logstore_seq_num_t upto_lsn, bool in_memory_truncate
         m_records.create_and_complete(upto_lsn, logstore_record(empty_ld_key, empty_ld_key));
     } else {
         m_trunc_ld_key = m_records.at(upto_lsn).m_trunc_key;
-        THIS_LOGSTORE_LOG(TRACE, "Truncating logstore upto lsn={} , m_trunc_ld_key index {} offset {}", upto_lsn,
+        THIS_LOGSTORE_LOG(INFO, "Truncating logstore upto lsn={} , m_trunc_ld_key index {} offset {}", upto_lsn,
                           m_trunc_ld_key.idx, m_trunc_ld_key.dev_offset);
     }
     m_records.truncate(upto_lsn);
     m_start_lsn.store(upto_lsn + 1);
     if (!in_memory_truncate_only) { m_logdev->truncate(); }
     decr_pending_request_num();
+    THIS_LOGSTORE_LOG(INFO, "Truncation upto lsn={} completed, new start_lsn={} tail_lsn={} next_lsn={}", upto_lsn,
+                      m_start_lsn.load(), m_tail_lsn.load(), m_next_lsn.load());
     return true;
 }
 
@@ -360,18 +364,21 @@ bool HomeLogStore::rollback(logstore_seq_num_t to_lsn) {
     incr_pending_request_num();
     // Fast path
     if (to_lsn == m_tail_lsn.load()) {
+        THIS_LOGSTORE_LOG(INFO, "Rollback to the current tail_lsn {}, no-op", to_lsn);
         decr_pending_request_num();
         return true;
     }
 
-    if (to_lsn > m_tail_lsn.load() || to_lsn < m_start_lsn.load()) {
+    // Special case: allow rollback to exactly start_lsn - 1.
+    // This handles the scenario where all logs were truncated and a leader switch happens before new logs commit.
+    if (to_lsn > m_tail_lsn.load() || to_lsn < m_start_lsn.load() - 1) {
         HS_LOG_ASSERT(false, "Attempted to rollback to {} which is not in the range of [{}, {}]", to_lsn,
-                      m_start_lsn.load(), m_tail_lsn.load());
+                      m_start_lsn.load() - 1, m_tail_lsn.load());
         decr_pending_request_num();
         return false;
     }
 
-    THIS_LOGSTORE_LOG(INFO, "Rolling back to {}, tail {}", to_lsn, m_tail_lsn.load());
+    THIS_LOGSTORE_LOG(INFO, "Rolling back to {}, start {} tail {}", to_lsn, m_start_lsn.load(), m_tail_lsn.load());
     bool do_flush{false};
     do {
         {
