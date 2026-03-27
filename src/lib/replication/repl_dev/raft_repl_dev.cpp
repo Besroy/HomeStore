@@ -2464,7 +2464,7 @@ void RaftReplDev::flush_durable_commit_lsn() {
         return;
     }
 
-    RD_LOGT(NO_TRACE_ID, "Flushing durable commit lsn to {}", lsn);
+    RD_LOGT_EVERY_N(unmove(200), NO_TRACE_ID, "Flushing durable commit lsn to {}", lsn);
     std::unique_lock lg{m_sb_mtx};
     m_rd_sb->durable_commit_lsn = lsn;
     m_rd_sb.write();
@@ -2609,10 +2609,11 @@ void RaftReplDev::gc_repl_reqs() {
         }
         if (rreq->dsn() < cur_dsn && rreq->is_expired()) {
             // The DSN can be out of order, wait till rreq expired.
-            RD_LOGD(rreq->traceID(),
-                    "legacy req with commited DSN, rreq=[{}] , dsn = {}, next_dsn = {}, gap= {}, elapsed_time_sec {}",
-                    rreq->to_string(), rreq->dsn(), cur_dsn, cur_dsn - rreq->dsn(),
-                    get_elapsed_time_sec(rreq->created_time()));
+            RD_LOGD_EVERY_N(
+                unmove(60), rreq->traceID(),
+                "legacy req with commited DSN, rreq=[{}] , dsn = {}, next_dsn = {}, gap= {}, elapsed_hours {}",
+                rreq->to_string(), rreq->dsn(), cur_dsn, cur_dsn - rreq->dsn(),
+                get_elapsed_time_sec(rreq->created_time()) / 3600);
             expired_rreqs.push_back(rreq);
         }
     }
@@ -2628,8 +2629,8 @@ void RaftReplDev::gc_repl_reqs() {
             return;
         }
         if (rreq->is_expired()) {
-            RD_LOGD(rreq->traceID(), "StateMachine: rreq=[{}] is expired, elapsed_time_sec{};", rreq->to_string(),
-                    get_elapsed_time_sec(rreq->created_time()));
+            RD_LOGD_EVERY_N(unmove(60), rreq->traceID(), "StateMachine: rreq=[{}] is expired, elapsed_hours {};",
+                            rreq->to_string(), get_elapsed_time_sec(rreq->created_time()) / 3600);
         }
     });
     RD_LOGT(NO_TRACE_ID, "state_machine req map size is {};", sm_req_cnt);
@@ -2637,8 +2638,8 @@ void RaftReplDev::gc_repl_reqs() {
     for (auto removing_rreq : expired_rreqs) {
         // once log flushed, the commit progress controlled by raft
         if (removing_rreq->has_state(repl_req_state_t::LOG_FLUSHED)) {
-            RD_LOGT(removing_rreq->traceID(), "Skipping GC rreq [{}] because it is in state machine",
-                    removing_rreq->to_string());
+            RD_LOGT_EVERY_N(unmove(60), removing_rreq->traceID(),
+                            "Skipping GC rreq [{}] because it is in state machine", removing_rreq->to_string());
             continue;
         }
         // do garbage collection
