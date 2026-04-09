@@ -540,7 +540,11 @@ void IndexWBCache::prune_up_buffers(IndexBufferPtr const& buf, std::vector< Inde
                up_buf->to_string(), buf->to_string());
     update_up_buffer_counters(up_buf);
 
-    pruned_bufs_to_repair.push_back(up_buf);
+    // Meta buffers are temporary dependency-tracking placeholders created from journal records during recovery.
+    // They hold no real B-tree node data and have no corresponding IndexTable entry to repair against
+    // (the table may not even exist if it was destroyed before the crash). Real superblock state is
+    // restored via update_root()/write_sb(), not through the repair path.
+    if (!up_buf->is_meta_buf()) { pruned_bufs_to_repair.push_back(up_buf); }
     if (grand_up_buf && !grand_up_buf->is_meta_buf() && grand_up_buf->m_wait_for_down_buffers.testz()) {
         LOGTRACEMOD(
             wbcache,
