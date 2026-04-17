@@ -13,12 +13,14 @@
  * specific language governing permissions and limitations under the License.
  *
  *********************************************************************************/
-#include <gtest/gtest.h>
 #include <boost/uuid/random_generator.hpp>
+#include <gtest/gtest.h>
 
+#include <cstring>
 #include <sisl/utility/enum.hpp>
 #include "common/homestore_config.hpp"
 #include "common/resource_mgr.hpp"
+#include "index/index_cp.hpp"
 #include "test_common/homestore_test_common.hpp"
 #include "test_common/range_scheduler.hpp"
 #include "btree_helpers/btree_test_helper.hpp"
@@ -545,6 +547,76 @@ struct IndexCrashTest : public test_common::HSTestHelper, BtreeTestHelper< TestT
 
     uint32_t tree_key_count() { return this->m_bt->count_keys(this->m_bt->root_node_id()); }
 
+    IndexCPContext* index_cp_ctx() const {
+        auto cpg = hs()->cp_mgr().cp_guard();
+        return r_cast< IndexCPContext* >(cpg.context(cp_consumer_t::INDEX_SVC));
+    }
+
+    static std::vector< IndexBufferPtr > recovered_buffers(std::vector< IndexBufferPtr > bufs) { return bufs; }
+
+    static std::vector< IndexBufferPtr > recovered_buffers(std::map< BlkId, IndexBufferPtr > bufs) {
+        std::vector< IndexBufferPtr > recovered;
+        recovered.reserve(bufs.size());
+        for (auto& [_, buf] : bufs) {
+            recovered.push_back(std::move(buf));
+        }
+        return recovered;
+    }
+
+    std::vector< IndexBufferPtr >
+    recover_meta_parent_records(std::initializer_list< std::pair< uint32_t, BlkId > > records) const {
+        sisl::io_blob_safe journal_buf{512u, 512u, sisl::buftag::metablk};
+        auto* tj = new (journal_buf.bytes()) IndexCPContext::txn_journal();
+        tj->cp_id = index_cp_ctx()->id();
+
+        for (auto const& [ordinal, child_blkid] : records) {
+            auto rec = tj->append_record(ordinal);
+            rec->append(IndexCPContext::op_t::parent_inplace, BlkId{});
+            rec->is_parent_meta = 0x1;
+            rec->append(IndexCPContext::op_t::child_inplace, child_blkid);
+        }
+
+        sisl::byte_view journal_view{tj->size, 512u, sisl::buftag::metablk};
+        auto blob = journal_view.get_blob();
+        std::memcpy(blob.bytes(), journal_buf.cbytes(), tj->size);
+        return recovered_buffers(index_cp_ctx()->recover(journal_view));
+    }
+
+    std::vector< IndexBufferPtr > recover_active_journal() const {
+        auto* cp_ctx = index_cp_ctx();
+        auto const& journal_buf = cp_ctx->journal_buf();
+        EXPECT_NE(journal_buf.cbytes(), nullptr);
+        if (journal_buf.cbytes() == nullptr) { return {}; }
+
+        auto const* tj = r_cast< IndexCPContext::txn_journal const* >(journal_buf.cbytes());
+        EXPECT_GT(tj->num_txns, 0u);
+        EXPECT_GT(tj->size, sizeof(IndexCPContext::txn_journal));
+        if ((tj->num_txns == 0u) || (tj->size <= sizeof(IndexCPContext::txn_journal))) { return {}; }
+
+        sisl::byte_view journal_view{tj->size, 512u, sisl::buftag::metablk};
+        auto blob = journal_view.get_blob();
+        std::memcpy(blob.bytes(), journal_buf.cbytes(), tj->size);
+        return recovered_buffers(cp_ctx->recover(journal_view));
+    }
+
+    std::shared_ptr< typename T::BtreeType > create_additional_btree() {
+        auto uuid = boost::uuids::random_generator()();
+        auto parent_uuid = boost::uuids::random_generator()();
+        auto bt = std::make_shared< typename T::BtreeType >(uuid, parent_uuid, 0, this->m_cfg);
+        hs()->index_service().add_index_table(bt);
+        LOGINFO("Added additional index table with uuid {} - ordinal {}", boost::uuids::to_string(uuid), bt->ordinal());
+        return bt;
+    }
+
+    void put_key(std::shared_ptr< typename T::BtreeType > const& bt, uint64_t k, V const& value = V::generate_rand()) {
+        auto existing_v = std::make_unique< V >();
+        K key = K{k};
+        auto sreq = BtreeSinglePutRequest{&key, &value, btree_put_type::INSERT, existing_v.get()};
+        sreq.enable_route_tracing();
+        auto const ret = bt->put(sreq);
+        ASSERT_EQ(ret, btree_status_t::success) << "INSERT key=" << k << " failed with error=" << enum_name(ret);
+    }
+
     void long_running_crash(long_running_crash_options const& crash_test_options) {
         // set putFreq 100 for the initial load
         SequenceGenerator generator(100 /*putFreq*/, 0 /* removeFreq*/, 0 /*start_range*/,
@@ -773,6 +845,66 @@ TYPED_TEST(IndexCrashTest, CrashBeforeFirstCp) {
 
     // Post crash, load the shadow_map into a new instance and compute the diff. Redo the operation
     this->reapply_after_crash();
+}
+
+TYPED_TEST(IndexCrashTest, RecoverDistinctMetaParentsAcrossOrdinals) {
+    auto const first_child = BlkId{11, 1, 101};
+    auto const second_child = BlkId{12, 1, 102};
+    auto recovered = this->recover_meta_parent_records(
+        {{this->m_bt->ordinal(), first_child}, {this->m_bt->ordinal() + 1, second_child}});
+
+    ASSERT_EQ(recovered.size(), 4u);
+
+    std::map< uint32_t, std::vector< IndexBufferPtr > > buffers_by_ordinal;
+    uint32_t meta_bufs{0};
+    for (auto const& buf : recovered) {
+        buffers_by_ordinal[buf->m_index_ordinal].push_back(buf);
+        if (buf->is_meta_buf()) { ++meta_bufs; }
+    }
+
+    ASSERT_EQ(meta_bufs, 2u);
+    ASSERT_EQ(buffers_by_ordinal.size(), 2u);
+    ASSERT_EQ(buffers_by_ordinal[this->m_bt->ordinal()].size(), 2u);
+    ASSERT_EQ(buffers_by_ordinal[this->m_bt->ordinal() + 1].size(), 2u);
+
+    for (auto const& buf : recovered) {
+        if (!buf->is_meta_buf()) {
+            ASSERT_NE(buf->m_up_buffer, nullptr);
+            EXPECT_TRUE(buf->m_up_buffer->is_meta_buf());
+            EXPECT_EQ(buf->m_up_buffer->m_index_ordinal, buf->m_index_ordinal);
+        }
+    }
+}
+
+TYPED_TEST(IndexCrashTest, CrashBeforeFirstCpAcrossTwoIndexes) {
+    auto const primary_key = 7u;
+    auto const secondary_key = 1007u;
+
+    auto secondary_bt = this->create_additional_btree();
+    this->put(primary_key, btree_put_type::INSERT, true /* expect_success */);
+    this->put_key(secondary_bt, secondary_key);
+
+    auto const& journal_buf = this->index_cp_ctx()->journal_buf();
+    ASSERT_NE(journal_buf.cbytes(), nullptr);
+    auto const* tj = r_cast< IndexCPContext::txn_journal const* >(journal_buf.cbytes());
+    ASSERT_GT(tj->num_txns, 0u);
+
+    auto recovered = this->recover_active_journal();
+    ASSERT_FALSE(recovered.empty());
+
+    std::set< uint32_t > ordinals;
+    std::map< uint32_t, uint32_t > meta_bufs_by_ordinal;
+    for (auto const& buf : recovered) {
+        ordinals.insert(buf->m_index_ordinal);
+        if (buf->is_meta_buf()) { ++meta_bufs_by_ordinal[buf->m_index_ordinal]; }
+        if (buf->m_up_buffer) { EXPECT_EQ(buf->m_up_buffer->m_index_ordinal, buf->m_index_ordinal); }
+    }
+
+    ASSERT_GE(ordinals.size(), 2u);
+    ASSERT_EQ(meta_bufs_by_ordinal.size(), 2u);
+    for (auto const& [_, count] : meta_bufs_by_ordinal) {
+        EXPECT_EQ(count, 1u);
+    }
 }
 
 TYPED_TEST(IndexCrashTest, SplitOnLeftEdge) {

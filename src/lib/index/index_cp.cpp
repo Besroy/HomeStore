@@ -229,7 +229,7 @@ void IndexCPContext::log_dags() {
     sisl::logging::GetLogger()->flush();
 }
 
-std::map< BlkId, IndexBufferPtr > IndexCPContext::recover(sisl::byte_view sb) {
+std::vector< IndexBufferPtr > IndexCPContext::recover(sisl::byte_view sb) {
     txn_journal const* tj = r_cast< txn_journal const* >(sb.bytes());
     if (tj->cp_id != id()) {
         // On clean shutdown, cp_id would be lesser than the current cp_id, in that case ignore this sb
@@ -240,13 +240,15 @@ std::map< BlkId, IndexBufferPtr > IndexCPContext::recover(sisl::byte_view sb) {
     HS_DBG_ASSERT_GT(tj->size, 0, "Invalid txn_journal, size of records is zero");
 
     std::map< BlkId, IndexBufferPtr > buf_map;
+    std::map< uint32_t, IndexBufferPtr > meta_buf_map;
+    std::vector< IndexBufferPtr > recovered_bufs;
     uint8_t const* cur_ptr = r_cast< uint8_t const* >(tj) + sizeof(txn_journal);
 
     for (uint32_t t{0}; t < tj->num_txns; ++t) {
         txn_record const* rec = r_cast< txn_record const* >(cur_ptr);
         HS_DBG_ASSERT_GT(rec->total_ids(), 0, "Invalid txn_record, has no ids in it");
 
-        process_txn_record(rec, buf_map);
+        process_txn_record(rec, buf_map, meta_buf_map, recovered_bufs);
         cur_ptr += rec->size();
         LOGTRACEMOD(wbcache, "Recovered txn record: {}: {}", t, rec->to_string());
     }
@@ -275,20 +277,20 @@ std::map< BlkId, IndexBufferPtr > IndexCPContext::recover(sisl::byte_view sb) {
         LOGTRACEMOD(wbcache,"Before modify : \n ");
         dag_print(buf_map, "Before: ");
 #endif
-    for (auto& [blkid, bufferPtr] : buf_map) {
+    for (auto& bufferPtr : recovered_bufs) {
         modifyBuffer(bufferPtr);
     }
     //    LOGTRACEMOD(wbcache,"\n\n\nAFTER modify : \n ");
     //    dag_print(buf_map, "After: ");
 
-    auto sanityCheck = [](const std::map< BlkId, IndexBufferPtr >& dags) {
-        for (const auto& [blkid, bufferPtr] : dags) {
+    auto sanityCheck = [](const std::vector< IndexBufferPtr >& dags) {
+        for (const auto& bufferPtr : dags) {
             auto up_buffer = bufferPtr->m_up_buffer;
             if (up_buffer) {
                 HS_REL_ASSERT(
                     !up_buffer->m_node_freed,
                     "Sanity check failed: Buffer {} blkdid {} has an up_buffer {} blkid that is marked as freed.",
-                    bufferPtr->to_string(), blkid.to_integer(), up_buffer->to_string(),
+                    bufferPtr->to_string(), bufferPtr->blkid().to_integer(), up_buffer->to_string(),
                     up_buffer->blkid().to_integer());
                 HS_REL_ASSERT_EQ(up_buffer->m_created_cp_id, -1,
                                  "Sanity check failed: Buffer {} has an up_buffer {} that just created",
@@ -321,32 +323,45 @@ std::map< BlkId, IndexBufferPtr > IndexCPContext::recover(sisl::byte_view sb) {
         }
     };
 
-    sanityCheck(buf_map);
-    return buf_map;
+    sanityCheck(recovered_bufs);
+    return recovered_bufs;
 }
 
-void IndexCPContext::process_txn_record(txn_record const* rec, std::map< BlkId, IndexBufferPtr >& buf_map) {
+void IndexCPContext::process_txn_record(txn_record const* rec, std::map< BlkId, IndexBufferPtr >& buf_map,
+                                        std::map< uint32_t, IndexBufferPtr >& meta_buf_map,
+                                        std::vector< IndexBufferPtr >& recovered_bufs) {
     auto cpg = cp_mgr().cp_guard();
 
-    auto const rec_to_buf = [&buf_map, &cpg](txn_record const* rec, bool is_meta, BlkId const& bid,
-                                             IndexBufferPtr const& up_buf) -> IndexBufferPtr {
+    auto const rec_to_buf = [&buf_map, &meta_buf_map, &recovered_bufs,
+                             &cpg](txn_record const* rec, bool is_meta, BlkId const& bid,
+                                   IndexBufferPtr const& up_buf) -> IndexBufferPtr {
         IndexBufferPtr buf;
-        auto it = buf_map.find(bid);
-        if (it == buf_map.end()) {
+        auto const lookup_existing = [&]() -> IndexBufferPtr {
+            if (is_meta) {
+                auto it = meta_buf_map.find(rec->index_ordinal);
+                return (it == meta_buf_map.end()) ? nullptr : it->second;
+            }
+
+            auto it = buf_map.find(bid);
+            return (it == buf_map.end()) ? nullptr : it->second;
+        };
+
+        buf = lookup_existing();
+        if (!buf) {
             if (is_meta) {
                 superblk< index_table_sb > tmp_sb;
                 buf = std::make_shared< MetaIndexBuffer >(tmp_sb);
+                [[maybe_unused]] auto [it2, happened] = meta_buf_map.insert(std::make_pair(rec->index_ordinal, buf));
+                DEBUG_ASSERT(happened, "meta_buf_map insert failed");
             } else {
                 buf = std::make_shared< IndexBuffer >(nullptr, bid);
+                [[maybe_unused]] auto [it2, happened] = buf_map.insert(std::make_pair(bid, buf));
+                DEBUG_ASSERT(happened, "buf_map insert failed");
             }
-
-            [[maybe_unused]] auto [it2, happened] = buf_map.insert(std::make_pair(bid, buf));
-            DEBUG_ASSERT(happened, "buf_map insert failed");
 
             buf->m_dirtied_cp_id = cpg->id();
             buf->m_index_ordinal = rec->index_ordinal;
-        } else {
-            buf = it->second;
+            recovered_bufs.push_back(buf);
         }
 
         if (up_buf) {

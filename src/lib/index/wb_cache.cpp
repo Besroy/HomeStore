@@ -465,10 +465,7 @@ void IndexWBCache::load_buf(IndexBufferPtr const& buf) {
     }
 }
 
-IndexWBCache::DagMap IndexWBCache::generate_dag_buffers(std::map< BlkId, IndexBufferPtr >& bufmap) {
-    std::vector< IndexBufferPtr > bufs;
-    std::ranges::transform(bufmap, std::back_inserter(bufs), [](const auto& pair) { return pair.second; });
-
+IndexWBCache::DagMap IndexWBCache::generate_dag_buffers(std::vector< IndexBufferPtr > const& bufs) {
     auto buildReverseMapping = [](const std::vector< IndexBufferPtr >& buffers) {
         std::unordered_map< IndexBufferPtr, std::vector< IndexBufferPtr > > parentToChildren;
         for (const auto& buffer : buffers) {
@@ -563,16 +560,16 @@ void IndexWBCache::recover(sisl::byte_view sb) {
     // relationship (up/down buf links) as it was by the cp that was flushing the buffers prior to unclean shutdown.
     auto cpg = cp_mgr().cp_guard();
     auto icp_ctx = r_cast< IndexCPContext* >(cpg.context(cp_consumer_t::INDEX_SVC));
-    std::map< BlkId, IndexBufferPtr > bufs = icp_ctx->recover(std::move(sb));
+    std::vector< IndexBufferPtr > bufs = icp_ctx->recover(std::move(sb));
 
     LOGINFOMOD(wbcache, "Detected unclean shutdown, prior cp={} had to flush {} nodes, recovering... ", icp_ctx->id(),
                bufs.size());
 
 #ifdef _PRERELEASE
-    auto detailed_log = [this](std::map< BlkId, IndexBufferPtr > const& bufs,
+    auto detailed_log = [this](std::vector< IndexBufferPtr > const& bufs,
                                std::vector< IndexBufferPtr > const& pending_bufs) {
         std::string log = fmt::format("\trecovered bufs (#of bufs = {})\n", bufs.size());
-        for (auto const& [_, buf] : bufs) {
+        for (auto const& buf : bufs) {
             load_buf(buf);
             fmt::format_to(std::back_inserter(log), "{}\n", buf->to_string());
         }
@@ -611,7 +608,7 @@ void IndexWBCache::recover(sisl::byte_view sb) {
     std::vector< IndexBufferPtr > pruned_bufs_to_repair;
     std::set< IndexBufferPtr > bufs_to_skip_sanity_check;
     LOGTRACEMOD(wbcache, "\n\n\nRecovery processing begins\n\n\n");
-    for (auto const& [_, buf] : bufs) {
+    for (auto const& buf : bufs) {
         load_buf(buf);
 
         if (buf->m_node_freed) {
@@ -735,7 +732,7 @@ void IndexWBCache::recover(sisl::byte_view sb) {
         LOGTRACEMOD(wbcache, "No buffers to repair, recovery completed");
     } else {
         std::map< uint32_t, IndexBufferPtrList > changed_bufs;
-        for (auto const& [_, buf] : bufs) {
+        for (auto const& buf : bufs) {
             LOGTRACEMOD(wbcache, "{}", buf->to_string());
             if (!buf->m_node_freed && !bufs_to_skip_sanity_check.contains(buf)) {
                 changed_bufs[buf->m_index_ordinal].push_back(buf);

@@ -153,7 +153,7 @@ public:
     void add_to_txn_journal(uint32_t index_ordinal, const IndexBufferPtr& parent_buf,
                             const IndexBufferPtr& left_child_buf, const IndexBufferPtrList& created_bufs,
                             const IndexBufferPtrList& freed_buf);
-    std::map< BlkId, IndexBufferPtr > recover(sisl::byte_view sb);
+    std::vector< IndexBufferPtr > recover(sisl::byte_view sb);
 
     sisl::io_blob_safe const& journal_buf() const { return m_txn_journal_buf; }
 
@@ -174,7 +174,9 @@ private:
     void check_wait_for_leaders();
     void log_dags();
 
-    void process_txn_record(txn_record const* rec, std::map< BlkId, IndexBufferPtr >& buf_map);
+    void process_txn_record(txn_record const* rec, std::map< BlkId, IndexBufferPtr >& buf_map,
+                            std::map< uint32_t, IndexBufferPtr >& meta_buf_map,
+                            std::vector< IndexBufferPtr >& recovered_bufs);
 };
 
 class IndexWBCache;

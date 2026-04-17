@@ -87,7 +87,7 @@ private:
     void recover_buf(IndexBufferPtr const& buf);
     void parent_recover(IndexBufferPtr const& buf);
     std::string to_string_dag_bufs(DagMap& dags, cp_id_t cp_id = 0);
-    DagMap generate_dag_buffers(std::map< BlkId, IndexBufferPtr >& bufmap);
+    DagMap generate_dag_buffers(std::vector< IndexBufferPtr > const& bufs);
     bool was_node_committed(IndexBufferPtr const& buf);
     void load_buf(IndexBufferPtr const& buf);
     void update_up_buffer_counters(IndexBufferPtr const& buf);
