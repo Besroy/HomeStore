@@ -155,17 +155,30 @@ bool AppendBlkAllocator::is_blk_alloced(const BlkId& in_bid, bool) const {
 }
 
 void AppendBlkAllocator::reset() {
+    // Reset in-place: restore all in-memory counters to the initial empty state and mark dirty
+    // so the next cp_flush persists commit_offset=0 to the existing superblock.
+    //
+    // We intentionally do NOT destroy the superblock or deregister the handler here, unlike
+    // BitmapBlkAllocator::reset(). AppendBlkAllocator is managed by the upper layer (HomeObject
+    // GC), which reuses the same chunk across multiple GC cycles. Keeping the same allocator
+    // instance alive avoids the race described in https://github.com/eBay/HomeObject/issues/401:
+    //
+    //   T1: cp_flush holds a shared_ptr to the old allocator
+    //   T2: reset() destroys m_sb [old behavior]
+    //   T3: gc_repl_reqs calls free() on old allocator -> m_is_dirty=true
+    //   T4: cp_flush writes to the destroyed m_sb -> crash
+    //
+    // With in-place reset the superblock is always valid, so T4 is safe regardless of T3.
     std::lock_guard lg(m_sb_mtx);
-    m_is_dirty.store(false);
-    m_sb.destroy();
-    meta_service().deregister_handler(get_name());
+    m_last_append_offset.store(0);
+    m_freeable_nblks.store(0);
+    m_commit_offset.store(0);
+    m_is_dirty.store(true);
 }
 
 bool AppendBlkAllocator::is_blk_alloced_on_disk(BlkId const& bid, bool use_lock) const {
     std::lock_guard lg(m_sb_mtx);
-    if (!m_sb.is_empty()) { return bid.blk_num() < m_sb->commit_offset; }
-    // if allocator is reset, the sb will be destroyed, and all the blks will be treated as free;
-    return false;
+    return bid.blk_num() < m_sb->commit_offset;
 }
 
 std::string AppendBlkAllocator::get_name() const { return "AppendBlkAlloc_chunk_" + std::to_string(m_chunk_id); }

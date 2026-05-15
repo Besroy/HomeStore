@@ -129,6 +129,16 @@ void VirtualDev::add_chunk(cshared< Chunk >& chunk, bool is_fresh_chunk) {
 }
 
 void VirtualDev::reset_chunk_blk_allocator(Chunk* chunk) {
+    if (m_allocator_type == blk_allocator_type_t::append) {
+        // AppendBlkAllocator resets in-place via its reset() method and no new allocator instance is created.
+        // Creating a new instance would require deregistering the old handler and registering a
+        // new one, which introduces a window where a concurrent cp_flush holding the old
+        // allocator's shared_ptr could write to an already-destroyed superblock.
+        // See https://github.com/eBay/HomeObject/issues/401.
+
+        LOGINFO("AppendBlkAllocator resets in-place, skip creating new instance for chunk {}", chunk->chunk_id());
+        return;
+    }
     auto ba = create_blk_allocator(m_allocator_type, block_size(), chunk->physical_dev()->optimal_page_size(),
                                    chunk->physical_dev()->align_size(), chunk->size(), m_auto_recovery,
                                    chunk->chunk_id(), true /* is_init */, m_use_slab_in_blk_allocator);
@@ -743,8 +753,6 @@ void VirtualDev::cp_flush(VDevCPContext* v_cp_ctx) {
     // pass down cp so that underlying components can get their customized CP context if needed;
     m_chunk_selector->foreach_chunks([this, cp](cshared< Chunk >& chunk) {
         HS_LOG(TRACE, device, "Flushing chunk: {}, vdev: {}", chunk->chunk_id(), m_vdev_info.name);
-        // Hold shared_ptr to prevent allocator from being reset during cp_flush.
-        // This fixes race with GC's purge_reserved_chunk() which calls reset_block_allocator().
         auto alloc_ptr = chunk->blk_allocator_shared();
 
 #ifdef _PRERELEASE

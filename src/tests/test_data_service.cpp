@@ -1123,8 +1123,8 @@ TEST_F(BlkDataServiceAppendTest, TestResetCompletedBeforeCpFlush) {
     LOGINFO("Scenario 1: PASSED - Order: get_ptr -> reset_block_allocator -> cp_flush");
 }
 
-// Scenario 2: Order: cp_flush holds shared_ptr -> old allocator reset -> cp_flush on old -> create new allocator
-// Test that cp_flush executes after old allocator reset, then new allocator is created
+// Scenario 2: Order: cp_flush holds shared_ptr -> allocator reset (in-place) -> cp_flush completes on same allocator
+// Test that cp_flush completes safely after in-place reset of the same allocator
 TEST_F(BlkDataServiceAppendTest, TestResetDuringCpFlushHoldsSharedPtr) {
     vdev_info vinfo;
     auto data_vdev = inst().open_vdev(vinfo, true);
@@ -1185,12 +1185,12 @@ TEST_F(BlkDataServiceAppendTest, TestResetDuringCpFlushHoldsSharedPtr) {
             LOGINFO("Scenario 2: Old allocator reset() completed");
             old_allocator_reset.store(true);
 
-            // Wait for cp_flush to complete on old allocator before creating new one
+            // Wait for cp_flush to complete before reset thread continues
             for (int i = 0; i < 200 && !cp_flush_completed.load(); ++i) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
-            RELEASE_ASSERT(cp_flush_completed.load(), "cp_flush should complete before creating new allocator");
-            LOGINFO("Scenario 2: cp_flush completed, proceeding to create new allocator");
+            RELEASE_ASSERT(cp_flush_completed.load(), "cp_flush should complete before reset thread continues");
+            LOGINFO("Scenario 2: cp_flush completed, reset thread proceeding");
         }));
 
     std::thread flush_thread([&]() {
@@ -1205,7 +1205,7 @@ TEST_F(BlkDataServiceAppendTest, TestResetDuringCpFlushHoldsSharedPtr) {
     std::thread reset_thread([&]() {
         chunk->reset_block_allocator();
         reset_completed.store(true);
-        LOGINFO("Scenario 2: reset_block_allocator completed (new allocator created)");
+        LOGINFO("Scenario 2: reset_block_allocator completed (in-place reset)");
     });
 
     flush_thread.join();
@@ -1219,7 +1219,7 @@ TEST_F(BlkDataServiceAppendTest, TestResetDuringCpFlushHoldsSharedPtr) {
     ASSERT_TRUE(cp_flush_completed.load());
     ASSERT_TRUE(reset_completed.load());
     ASSERT_TRUE(old_allocator_reset.load());
-    LOGINFO("Scenario 2: PASSED - Order: get_ptr -> old_allocator_reset -> cp_flush -> create new allocator");
+    LOGINFO("Scenario 2: PASSED - Order: get_ptr -> allocator_reset (in-place) -> cp_flush on same allocator");
 }
 
 // Scenario 3: Order: cp_flush acquires mutex first -> reset_block_allocator blocks on mutex
@@ -1297,6 +1297,52 @@ TEST_F(BlkDataServiceAppendTest, TestCpFlushBlocksResetWithMutex) {
     ASSERT_TRUE(cp_flush_completed.load());
     ASSERT_TRUE(reset_completed.load());
     LOGINFO("Scenario 3: PASSED - mutex protected m_sb from concurrent reset_block_allocator during cp_flush");
+}
+
+// Scenario 4: Order: cp_flush holds shared_ptr -> reset() completes -> free() re-sets dirty on old allocator
+//        -> cp_flush runs on old allocator
+// Test the race from https://github.com/eBay/HomeObject/issues/401:
+// with the old AppendBlkAllocator::reset() (destroy + recreate):
+//   - reset() destroys m_sb of the old allocator
+//   - free() sets m_is_dirty=true on the old allocator (whose m_sb is already destroyed)
+//   - cp_flush writes to the destroyed m_sb -> crash / undefined behavior
+TEST_F(BlkDataServiceAppendTest, TestFreeAfterResetBeforeCpFlushSafe) {
+    vdev_info vinfo;
+    auto data_vdev = inst().open_vdev(vinfo, true);
+    auto chunks = data_vdev->get_chunks();
+
+    auto it = std::find_if(chunks.begin(), chunks.end(), [](const auto& pair) {
+        return pair.second && pair.second->blk_allocator() &&
+            pair.second->blk_allocator()->get_name().find("append_chunk_") == 0;
+    });
+    ASSERT_NE(it, chunks.end()) << "No AppendBlkAllocator chunks found";
+    auto chunk = it->second;
+    auto chunk_id = chunk->chunk_id();
+
+    LOGINFO("Scenario 4: Testing chunk_id={}", chunk_id);
+
+    // Simulate cp_flush holding a reference to the old allocator before reset begins.
+    LOGINFO("Scenario 4: Simulate cp_flush acquiring shared_ptr to old allocator before reset");
+    auto old_alloc = chunk->blk_allocator_shared();
+
+    // Simulate GC's purge_reserved_chunk calling reset_block_allocator().
+    LOGINFO("Scenario 4: Simulate GC calling reset_block_allocator on the chunk");
+    chunk->reset_block_allocator();
+    auto alloc_after_reset = chunk->blk_allocator_shared();
+    ASSERT_FALSE(old_alloc.owner_before(alloc_after_reset) || alloc_after_reset.owner_before(old_alloc));
+
+    // Simulate gc_repl_reqs calling free() on the old allocator reference after reset
+    LOGINFO("Scenario 4: Simulate gc_repl_reqs calling free() on old allocator reference after reset");
+    BlkId fake_bid{0, 1, chunk_id};
+    old_alloc->free(fake_bid);
+
+    // Simulate cp_flush running on the old allocator reference.
+    // With fix: safe - m_sb is still valid, writes commit_offset=0 correctly.
+    // Without fix: UB - m_sb was destroyed in reset(), writing to it crashes.
+    LOGINFO("Scenario 4: Simulate cp_flush running on old allocator reference after reset and free");
+    old_alloc->cp_flush(nullptr);
+
+    LOGINFO("Scenario 4: PASSED - free() + cp_flush on old allocator after reset is safe");
 }
 
 #endif // _PRERELEASE
