@@ -664,6 +664,20 @@ uint64_t LogDev::truncate() {
     // Truncate them in vdev
     m_vdev_jd->truncate(min_safe_ld_key.dev_offset);
 
+#ifdef _PRERELEASE
+    // Simulate a crash between vdev chunk truncation (durable, sync_write) and logdev meta
+    // persist, reproducing the inconsistency that do_load's defensive start_idx check handles.
+    if (hs()->crash_simulator().crash_if_flip_set("abort_logdev_truncate_before_meta_persist")) {
+        THIS_LOGDEV_LOG(INFO,
+                        "CRASH FLIP fired: vdev truncated to dev_offset={} log_idx={} but meta NOT persisted. "
+                        "Stale meta on disk: dev_offset={} log_idx={}",
+                        min_safe_ld_key.dev_offset, min_safe_ld_key.idx, m_logdev_meta.get_start_dev_offset(),
+                        m_logdev_meta.get_start_log_idx());
+        decr_pending_request_num();
+        return num_records_to_truncate;
+    }
+#endif
+
     // Update the start offset to be read upon restart
     m_last_truncate_idx = min_safe_ld_key.idx;
     m_logdev_meta.set_start_dev_offset(min_safe_ld_key.dev_offset, min_safe_ld_key.idx, stopping /* persist_now */);
