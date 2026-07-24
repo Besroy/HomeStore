@@ -2374,6 +2374,18 @@ nuraft::cb_func::ReturnCode RaftReplDev::raft_event(nuraft::cb_func::Type type, 
             return ret;
         }
 
+#ifdef _PRERELEASE
+        if (iomgr_flip::instance()->callback_flip("raft_append_batch_received", raft_req)) {
+            RD_LOGT(NO_TRACE_ID, "Raft channel: Append entries callback flip completed, lsn {} ~ {}", start_lsn,
+                    start_lsn + entries.size() - 1);
+        }
+        if (iomgr_flip::instance()->test_flip("fake_reject_append_raft_channel")) {
+            RD_LOGD(NO_TRACE_ID, "Raft channel: Reject append entries requested by flip, lsn {} ~ {}", start_lsn,
+                    start_lsn + entries.size() - 1);
+            return nuraft::cb_func::ReturnCode::ReturnNull;
+        }
+#endif
+
         // there is a very corner case like following:
         // T1: L1 is leader, push data to follower F1, F1 generate rreq1 and allocate blk for this data. let`s say the
         // lsn of this data is lsn-100
@@ -2403,6 +2415,20 @@ nuraft::cb_func::ReturnCode RaftReplDev::raft_event(nuraft::cb_func::Type type, 
                 NO_TRACE_ID,
                 "Raft channel: Reject append entries on follower from leader due to latch_lsn {}, start_lsn {} ~ {}",
                 m_latch_lsn.load(), start_lsn, start_lsn + entries.size() - 1);
+            return nuraft::cb_func::ReturnCode::ReturnNull;
+        }
+
+        // NuRaft flushes the log store immediately when it appends a config entry. Reject a batch if that config
+        // entry follows an app log, otherwise the config flush can make the app log durable before its linked data.
+        // The saved hint is returned after NuRaft's rejection handshake, causing the leader to resend only the safe
+        // prefix. For example, [A, A, A, C, A, C] is retried as [A, A, A], then [C, A], then [C].
+        const auto safe_batch_size = get_safe_append_batch_size(entries);
+        if (safe_batch_size < entries.size()) {
+            m_state_machine->reset_next_batch_size_hint(int64_cast(safe_batch_size));
+            RD_LOGW(NO_TRACE_ID,
+                    "Raft channel: Reject mixed app+conf append entries to avoid config flush bypassing the "
+                    "data-write barrier: lsn {} ~ {}, first unsafe config lsn {}, retry batch size {}",
+                    start_lsn, start_lsn + entries.size() - 1, start_lsn + safe_batch_size, safe_batch_size);
             return nuraft::cb_func::ReturnCode::ReturnNull;
         }
 
@@ -2990,6 +3016,16 @@ bool RaftReplDev::is_state_machine_paused() { return raft_server()->is_state_mac
 void RaftReplDev::resume_state_machine() {
     RD_LOGI(NO_TRACE_ID, "Resume state machine execution for group_id={}", group_id_str());
     raft_server()->resume_state_machine_execution();
+}
+
+size_t RaftReplDev::get_safe_append_batch_size(const std::vector< nuraft::ptr< nuraft::log_entry > >& entries) {
+    bool seen_app_log = false;
+    for (size_t i = 0; i < entries.size(); ++i) {
+        const auto val_type = entries[i]->get_val_type();
+        if (val_type == nuraft::log_val_type::conf && seen_app_log) { return i; }
+        if (val_type == nuraft::log_val_type::app_log) { seen_app_log = true; }
+    }
+    return entries.size();
 }
 
 } // namespace homestore

@@ -520,6 +520,8 @@ private:
     bool is_in_quiescence() { return m_in_quiescence.load(std::memory_order_acquire); }
 
     uint64_t get_pending_init_req_num() { return m_pending_init_req_num.load(std::memory_order_acquire); }
+
+    static size_t get_safe_append_batch_size(const std::vector< nuraft::ptr< nuraft::log_entry > >& entries);
 };
 
 } // namespace homestore
