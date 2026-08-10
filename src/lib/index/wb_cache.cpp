@@ -657,7 +657,8 @@ void IndexWBCache::recover(sisl::byte_view sb) {
                             was_node_committed(buf->m_up_buffer));
                 buf->m_node_freed = false;
                 r_cast< persistent_hdr_t* >(buf->m_bytes)->node_deleted = false;
-                m_vdev->commit_blk(buf->m_blkid);
+                auto alloc_status = m_vdev->commit_blk(buf->m_blkid);
+                HS_REL_ASSERT_EQ(alloc_status, BlkAllocStatus::SUCCESS, "Unsuccessful commit_blk() in recover()");
                 if (buf->m_node_level) { potential_parent_recovered_bufs.insert(buf); }
                 prune_from_up_buffer(buf);
             }
@@ -668,7 +669,8 @@ void IndexWBCache::recover(sisl::byte_view sb) {
                 // Both current and up buffer is committed, we can safely commit the current block
                 LOGTRACEMOD(wbcache, "New buffer {} and the up buffer {} are committed", buf->to_string(),
                             buf->m_up_buffer->to_string());
-                m_vdev->commit_blk(buf->m_blkid);
+                auto alloc_status = m_vdev->commit_blk(buf->m_blkid);
+                HS_REL_ASSERT_EQ(alloc_status, BlkAllocStatus::SUCCESS, "Unsuccessful commit_blk() in recover()");
                 pending_bufs.push_back(buf->m_up_buffer);
             } else {
                 // Up buffer is not committed, we need to repair it first
@@ -847,14 +849,11 @@ folly::Future< bool > IndexWBCache::async_cp_flush(IndexCPContext* cp_ctx) {
     //     cp_ctx->to_string_dot(filename);
     // #endif
     if (!cp_ctx->any_dirty_buffers()) {
-        if (cp_ctx->id() == 0) {
-            // For the first CP, we need to flush the journal buffer to the meta blk
-            LOGINFO("First time boot cp, we shall flush the vdev to ensure all cp information is created");
-            m_vdev->cp_flush(cp_ctx);
-        } else {
-            CP_PERIODIC_LOG(DEBUG, unmove(cp_ctx->id()), "Btree does not have any dirty buffers to flush");
-        }
-        cp_ctx->complete(true);
+        LOGINFO("Flush the vdev to ensure all cp information is created");
+        // Always try to flush, will be a no-op when not needed
+        m_vdev->cp_flush(cp_ctx);
+
+        cp_ctx->complete(true); 
         return folly::makeFuture< bool >(true); // nothing to flush
     }
 
