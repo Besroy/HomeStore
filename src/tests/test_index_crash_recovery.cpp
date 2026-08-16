@@ -867,6 +867,243 @@ TYPED_TEST(IndexCrashTest, SplitCrash1) {
     }
 }
 
+// Scenario: first root split (depth 0 → 1), crash while writing the SB (meta_buf).
+//
+// Setup: insert max_keys/2 keys and checkpoint to establish a durable leaf root (depth=0).
+// Then insert more keys until the first root split fires (depth becomes 1), with
+// "crash_flush_on_meta" armed so that the crash fires the moment the SB write begins.
+//
+// Disk state at crash:
+//   - new_root_buf is durable (Fix 2 pre-flush wrote it before the normal DAG flush).
+//   - old_root (the modified leaf) is durable in split state.
+//   - SB still names the old_root as root.
+//
+// Expected recovery (Fix 2): the journal identifies new_root_buf as the intended root,
+// persisted_root_was_committed() confirms old_root was written, so new_root_buf is
+// promoted.  After recovery depth == 1 and all keys are intact.
+TYPED_TEST(IndexCrashTest, CrashAtMetaBufOnFirstRootSplit) {
+    const uint32_t max_keys = SISL_OPTIONS["max_keys_in_node"].as< uint32_t >();
+    const uint32_t durable_key_count = max_keys / 2;
+
+    for (uint32_t k = 0; k < durable_key_count; ++k) {
+        this->put(k, btree_put_type::INSERT, true /* expect_success */);
+    }
+    test_common::HSTestHelper::trigger_cp(true);
+    this->m_shadow_map.save(this->m_shadow_filename);
+    auto const durable_root = this->m_bt->root_node_id();
+    ASSERT_EQ(this->m_bt->get_btree_depth(), 0);
+
+    this->set_basic_flip("crash_flush_on_meta");
+    uint32_t next_key = durable_key_count;
+    while (this->m_bt->get_btree_depth() == 0) {
+        this->put(next_key++, btree_put_type::INSERT, true /* expect_success */);
+    }
+    ASSERT_NE(this->m_bt->root_node_id(), durable_root);
+    ASSERT_EQ(this->m_bt->get_btree_depth(), 1);
+    ASSERT_TRUE(hs()->crash_simulator().will_crash());
+
+    test_common::HSTestHelper::trigger_cp(false);
+    this->wait_for_crash_recovery(true);
+
+    ASSERT_EQ(this->m_bt->get_btree_depth(), 1);
+    this->reapply_after_crash();
+    this->get_all();
+}
+
+// Scenario: first root split (depth 0 → 1), crash after old_root is flushed but before
+// new_root_buf is written.
+//
+// Setup: same as CrashAtMetaBufOnFirstRootSplit, but "crash_flush_on_root" fires when
+// the new_root_buf write begins, so old_root reaches disk in its split state while
+// new_root_buf has not yet been written.
+//
+// Disk state at crash:
+//   - old_root is durable with edge_info=EMPTY and next_bnode=child_node2 (split state).
+//   - new_root_buf has NOT been written (Fix 2 pre-flush was interrupted).
+//   - SB still names old_root.
+//
+// Expected recovery: Fix 2 pre-flush guarantees new_root_buf is written before old_root
+// reaches disk (Fix 2 barrier), so new_root_buf must be durable.  Recovery identifies
+// it via the journal and promotes it.  After recovery depth == 1 and all keys are intact.
+TYPED_TEST(IndexCrashTest, CrashAfterOldRootFlushOnFirstRootSplit) {
+    const uint32_t max_keys = SISL_OPTIONS["max_keys_in_node"].as< uint32_t >();
+    const uint32_t durable_key_count = max_keys / 2;
+
+    for (uint32_t k = 0; k < durable_key_count; ++k) {
+        this->put(k, btree_put_type::INSERT, true /* expect_success */);
+    }
+    test_common::HSTestHelper::trigger_cp(true);
+    this->m_shadow_map.save(this->m_shadow_filename);
+    auto const durable_root = this->m_bt->root_node_id();
+    ASSERT_EQ(this->m_bt->get_btree_depth(), 0);
+
+    this->set_basic_flip("crash_flush_on_root");
+    uint32_t next_key = durable_key_count;
+    while (this->m_bt->get_btree_depth() == 0) {
+        this->put(next_key++, btree_put_type::INSERT, true /* expect_success */);
+    }
+    ASSERT_NE(this->m_bt->root_node_id(), durable_root);
+    ASSERT_EQ(this->m_bt->get_btree_depth(), 1);
+    ASSERT_TRUE(hs()->crash_simulator().will_crash());
+
+    test_common::HSTestHelper::trigger_cp(false);
+    this->wait_for_crash_recovery(true);
+
+    ASSERT_EQ(this->m_bt->get_btree_depth(), 1);
+    this->reapply_after_crash();
+    this->get_all();
+}
+
+// Scenario: first root split (depth 0 → 1), crash during Fix 2's pre-flush barrier
+// before any node of the split reaches disk.
+//
+// Setup: same initial state (durable leaf root at depth=0), but "crash_during_root_preflush"
+// fires inside the async pre-flush writes, before the normal DAG flush starts.
+// crash_simulator.set_will_crash(true) is called explicitly because this flip fires
+// before the CP engine's own crash point.
+//
+// Disk state at crash:
+//   - Neither new_root_buf nor old_root has been written in the crashed CP.
+//   - The tree on disk is still in the pre-split consistent state (depth=0, old leaf root intact).
+//   - SB still names the original durable leaf root.
+//
+// Expected recovery: because old_root was never written in split state,
+// persisted_root_was_committed() returns false, new_root_buf is discarded, and the tree
+// reverts to its last fully consistent checkpoint.  After recovery root_node_id equals
+// durable_root and depth == 0.  reapply_after_crash re-inserts all post-CP keys.
+TYPED_TEST(IndexCrashTest, CrashDuringRootPreflushOnFirstRootSplit) {
+    const uint32_t max_keys = SISL_OPTIONS["max_keys_in_node"].as< uint32_t >();
+    const uint32_t durable_key_count = max_keys / 2;
+
+    for (uint32_t k = 0; k < durable_key_count; ++k) {
+        this->put(k, btree_put_type::INSERT, true /* expect_success */);
+    }
+    test_common::HSTestHelper::trigger_cp(true);
+    this->m_shadow_map.save(this->m_shadow_filename);
+    auto const durable_root = this->m_bt->root_node_id();
+    ASSERT_EQ(this->m_bt->get_btree_depth(), 0);
+
+    this->set_basic_flip("crash_during_root_preflush");
+    hs()->crash_simulator().set_will_crash(true);
+    uint32_t next_key = durable_key_count;
+    while (this->m_bt->get_btree_depth() == 0) {
+        this->put(next_key++, btree_put_type::INSERT, true /* expect_success */);
+    }
+    ASSERT_NE(this->m_bt->root_node_id(), durable_root);
+    ASSERT_EQ(this->m_bt->get_btree_depth(), 1);
+    ASSERT_TRUE(hs()->crash_simulator().will_crash());
+
+    test_common::HSTestHelper::trigger_cp(false);
+    this->wait_for_crash_recovery(true);
+
+    ASSERT_EQ(this->m_bt->root_node_id(), durable_root);
+    ASSERT_EQ(this->m_bt->get_btree_depth(), 0);
+    this->reapply_after_crash();
+    this->get_all();
+}
+
+// Scenario: second (or higher) root split (depth N → N+1), crash while writing the SB.
+//
+// Setup: insert max_keys+1 keys and checkpoint to establish a durable level-1 root.
+// Then insert max_keys*max_keys more keys to trigger one or more additional root splits,
+// with "crash_flush_on_meta" armed so the crash fires when the SB write begins.
+//
+// Disk state at crash:
+//   - new_root_buf (and any intermediate new roots) are durable via Fix 2 pre-flush.
+//   - old_root (level-1 internal node) is durable in split state.
+//   - SB still names the level-1 old_root.
+//
+// Expected recovery: same Fix 2 path as the first-split cases, but exercised on a
+// multi-level tree to confirm that the journal-based root promotion works regardless of
+// tree height.  After recovery depth > persisted_depth and all keys are intact.
+TYPED_TEST(IndexCrashTest, CrashAtMetaBufOnSecondRootSplit) {
+    const uint32_t max_keys = SISL_OPTIONS["max_keys_in_node"].as< uint32_t >();
+
+    // Establish a durable level-1 root before triggering the crash-sensitive level-1 -> level-2 split.
+    for (uint32_t k = 0; k <= max_keys; ++k) {
+        this->put(k, btree_put_type::INSERT, true /* expect_success */);
+    }
+    test_common::HSTestHelper::trigger_cp(true);
+    this->m_shadow_map.save(this->m_shadow_filename);
+    auto const persisted_root = this->m_bt->root_node_id();
+    auto const persisted_depth = this->m_bt->get_btree_depth();
+
+    this->set_basic_flip("crash_flush_on_meta");
+    const uint32_t phase2_count = max_keys * max_keys;
+    for (uint32_t k = max_keys + 1; k <= max_keys + phase2_count; ++k) {
+        this->put(k, btree_put_type::INSERT, true /* expect_success */);
+    }
+    ASSERT_NE(this->m_bt->root_node_id(), persisted_root);
+    ASSERT_GT(this->m_bt->get_btree_depth(), persisted_depth);
+    ASSERT_TRUE(hs()->crash_simulator().will_crash());
+
+    test_common::HSTestHelper::trigger_cp(false);
+    this->wait_for_crash_recovery(true);
+
+    ASSERT_GT(this->m_bt->get_btree_depth(), persisted_depth);
+    this->reapply_after_crash();
+    this->get_all();
+}
+
+// Scenario: second (or higher) root split, crash after old_root is flushed but before
+// new_root_buf is written; then crash a second time without a recovery CP to prove
+// that replaying the same journal and re-promoting the same root is idempotent.
+//
+// Setup: establish a durable level-1 root, then arm both "crash_flush_on_root" and
+// "skip_cp_after_index_root_recovery".  The first flip causes the crash after old_root
+// hits disk; the second flip suppresses the forced recovery CP so the original journal
+// remains on disk unchanged after the first recovery.
+//
+// Disk state at first crash:
+//   - old_root is durable in split state; new_root_buf is durable (Fix 2 pre-flush).
+//   - SB still names old_root.
+//
+// First recovery: Fix 2 promotes new_root_buf; depth > persisted_depth.
+//
+// Second crash (immediate, no recovery CP written):
+//   - The journal on disk still records the same root-change.
+//   - new_root_buf is already the in-memory root, and its blkid is already in the SB
+//     (written by set_root_from_committed_buf during the first recovery).
+//
+// Second recovery: the journal candidate is re-evaluated; set_root_from_committed_buf
+// detects the SB already names new_root_buf and is a no-op.  This verifies that
+// promoting an already-promoted root does not corrupt the tree.
+// After both recoveries depth > persisted_depth and all keys are intact.
+TYPED_TEST(IndexCrashTest, CrashAfterOldRootFlushOnSecondRootSplit) {
+    const uint32_t max_keys = SISL_OPTIONS["max_keys_in_node"].as< uint32_t >();
+
+    for (uint32_t k = 0; k <= max_keys; ++k) {
+        this->put(k, btree_put_type::INSERT, true /* expect_success */);
+    }
+    test_common::HSTestHelper::trigger_cp(true);
+    this->m_shadow_map.save(this->m_shadow_filename);
+    auto const persisted_root = this->m_bt->root_node_id();
+    auto const persisted_depth = this->m_bt->get_btree_depth();
+
+    this->set_basic_flip("crash_flush_on_root");
+    this->set_basic_flip("skip_cp_after_index_root_recovery");
+    const uint32_t phase2_count = max_keys * max_keys;
+    for (uint32_t k = max_keys + 1; k <= max_keys + phase2_count; ++k) {
+        this->put(k, btree_put_type::INSERT, true /* expect_success */);
+    }
+    ASSERT_NE(this->m_bt->root_node_id(), persisted_root);
+    ASSERT_GT(this->m_bt->get_btree_depth(), persisted_depth);
+    ASSERT_TRUE(hs()->crash_simulator().will_crash());
+
+    test_common::HSTestHelper::trigger_cp(false);
+    this->wait_for_crash_recovery(true);
+    ASSERT_GT(this->m_bt->get_btree_depth(), persisted_depth);
+
+    // The recovery CP was deliberately skipped, so the original journal is still current. Crash and wait sequentially
+    // to prove replaying the already-published candidate is idempotent.
+    hs()->crash_simulator().set_will_crash(true);
+    hs()->crash_simulator().crash();
+    this->wait_for_crash_recovery(true);
+    ASSERT_GT(this->m_bt->get_btree_depth(), persisted_depth);
+    this->reapply_after_crash();
+    this->get_all();
+}
+
 TYPED_TEST(IndexCrashTest, long_running_put_crash) {
     long_running_crash_options crash_test_options{
         .put_freq = 100,

@@ -366,11 +366,9 @@ void IndexWBCache::link_buf(IndexBufferPtr const& up_buf, IndexBufferPtr const& 
     IndexBufferPtr real_up_buf = up_buf;
     IndexCPContext* icp_ctx = r_cast< IndexCPContext* >(cp_ctx);
 
-    // Condition 1: If the down buffer and up buffer are both created by the current cp_id, unconditionally we need
-    // to link it with up_buffer's up_buffer. In other words, there should never a link between down and up buffers
-    // created in current generation (cp). In real terms, it means all new buffers can be flushed independently to
-    // each other and dependency is needed only for the buffers created in previous cps.
-    if (up_buf->m_created_cp_id == icp_ctx->id()) {
+    // Condition 1: Flatten only new-to-new links. An existing node modified by a root split must retain the new root
+    // as its up-buffer so recovery reconstructs the same root transition deterministically.
+    if (up_buf->m_created_cp_id == icp_ctx->id() && down_buf->m_created_cp_id == icp_ctx->id()) {
         real_up_buf = up_buf->m_up_buffer;
         HS_DBG_ASSERT(real_up_buf,
                       "Up buffer is newly created in this cp, but it doesn't have its own up_buffer, its not expected");
@@ -405,9 +403,11 @@ void IndexWBCache::link_buf(IndexBufferPtr const& up_buf, IndexBufferPtr const& 
     // This link is acheived by unconditionally changing the link in case of is_sibling=true to passed up_buf, but
     // conditionally do it in case of parent link where it already has a link don't override it.
     if (down_buf->m_up_buffer != nullptr) {
-        HS_DBG_ASSERT_LT(down_buf->m_up_buffer->m_created_cp_id, icp_ctx->id(),
-                         "down_buf=[{}] up_buffer=[{}] should never have been created on same cp",
-                         down_buf->to_string(), down_buf->m_up_buffer->to_string());
+        if (down_buf->m_created_cp_id == icp_ctx->id()) {
+            HS_DBG_ASSERT_LT(down_buf->m_up_buffer->m_created_cp_id, icp_ctx->id(),
+                             "down_buf=[{}] up_buffer=[{}] should never have been created on same cp",
+                             down_buf->to_string(), down_buf->m_up_buffer->to_string());
+        }
 
         if (!is_sibling_link || (down_buf->m_up_buffer == real_up_buf)) {
             // Already linked with same buf or its not a sibling link to override, nothing to do other than asserts
@@ -611,6 +611,20 @@ void IndexWBCache::recover(sisl::byte_view sb) {
 
     std::vector< IndexBufferPtr > pruned_bufs_to_repair;
     std::set< IndexBufferPtr > bufs_to_skip_sanity_check;
+    std::map< uint32_t, IndexBufferPtr > new_root_candidates;
+
+    auto persisted_root_was_committed = [&](uint32_t ordinal) {
+        auto const table = index_service().get_index_table(ordinal);
+        if (!table || table->persisted_root_node_id() == empty_bnodeid) { return false; }
+        auto const it = bufs.find(BlkId{table->persisted_root_node_id()});
+        return it != bufs.end() && was_node_committed(it->second);
+    };
+
+    auto commit_recovered_blk = [this](IndexBufferPtr const& buf) {
+        auto const status = m_vdev->commit_blk(buf->m_blkid);
+        HS_REL_ASSERT(status == BlkAllocStatus::SUCCESS, "Failed to commit recovered index block {}",
+                      buf->m_blkid.to_string());
+    };
 
     auto prune_from_up_buffer = [&](IndexBufferPtr const& buf) {
         if (!buf->m_up_buffer) { return; }
@@ -623,7 +637,32 @@ void IndexWBCache::recover(sisl::byte_view sb) {
 
     LOGTRACEMOD(wbcache, "\n\n\nRecovery processing begins\n\n\n");
     for (auto const& [_, buf] : bufs) {
-        load_buf(buf);
+        // Meta buffers are journal placeholders rather than vdev blocks.
+        if (!buf->is_meta_buf()) { load_buf(buf); }
+
+        // Root-collapse recovery: the surviving child (C0) was promoted to root and
+        // written to disk, but the crash happened before the SB could record the new
+        // root pointer.
+        //
+        // During a root collapse the flush DAG is:
+        //   meta_buf(SB) <-- C0(new root) <-- R(old root, freed)
+        // R is always flushed before C0, so was_node_committed(C0) implies R was also
+        // written.  The tree is therefore in mid-collapse state on disk: R carries
+        // node_deleted=true, C0 is durable as the new root, but the SB still points
+        // to R.  C0 must be promoted so the recovery CP can write the corrected SB.
+        //
+        // New-CP root candidates produced by a root split (where new_root_buf is
+        // created inside the crashed CP) do not reach this branch because their
+        // m_created_cp_id == icp_ctx->id(); they are handled in the is_meta_buf
+        // branch below.
+        auto const is_final_root = icp_ctx->recovered_root_id(buf->m_index_ordinal) == buf->blkid();
+        if (is_final_root                           // journal's last root-change record for this ordinal points to C0
+            && buf->m_created_cp_id < icp_ctx->id() // C0 predates the crashed CP, confirming root-collapse (not split)
+            && was_node_committed(buf)) // C0 is durable; because R precedes C0 in the DAG, R is also on disk
+        {
+            new_root_candidates[buf->m_index_ordinal] = buf;
+            continue; // C0 is neither freed nor new-CP; no further processing applies
+        }
 
         if (buf->m_node_freed) {
             LOGTRACEMOD(wbcache, "recovering free buf {}", buf->to_string());
@@ -657,33 +696,90 @@ void IndexWBCache::recover(sisl::byte_view sb) {
                             was_node_committed(buf->m_up_buffer));
                 buf->m_node_freed = false;
                 r_cast< persistent_hdr_t* >(buf->m_bytes)->node_deleted = false;
-                auto alloc_status = m_vdev->commit_blk(buf->m_blkid);
-                HS_REL_ASSERT_EQ(alloc_status, BlkAllocStatus::SUCCESS, "Unsuccessful commit_blk() in recover()");
+                commit_recovered_blk(buf);
                 if (buf->m_node_level) { potential_parent_recovered_bufs.insert(buf); }
                 prune_from_up_buffer(buf);
             }
         } else if (buf->m_created_cp_id == icp_ctx->id()) {
             LOGTRACEMOD(wbcache, "recovering new buf {}", buf->to_string());
-            // New node
-            if (was_node_committed(buf) && was_node_committed(buf->m_up_buffer)) {
-                // Both current and up buffer is committed, we can safely commit the current block
-                LOGTRACEMOD(wbcache, "New buffer {} and the up buffer {} are committed", buf->to_string(),
-                            buf->m_up_buffer->to_string());
-                auto alloc_status = m_vdev->commit_blk(buf->m_blkid);
-                HS_REL_ASSERT_EQ(alloc_status, BlkAllocStatus::SUCCESS, "Unsuccessful commit_blk() in recover()");
-                pending_bufs.push_back(buf->m_up_buffer);
-            } else {
-                // Up buffer is not committed, we need to repair it first
-                LOGTRACEMOD(wbcache, "The up buffer {} is not committed for the new buffer {}",
-                            buf->m_up_buffer->to_string(), buf->to_string());
-                buf->m_up_buffer->remove_down_buffer(buf);
-                prune_up_buffers(buf, pruned_bufs_to_repair);
-                //  Skip the sanity check on this buf as we do not keep it
+            auto const buf_was_committed = was_node_committed(buf);
+            if (!buf_was_committed) {
+                // This node was never written in the crashed CP; discard it.
+                prune_from_up_buffer(buf);
                 bufs_to_skip_sanity_check.insert(buf);
-                //                buf->m_up_buffer = nullptr;
+            } else if (buf->m_up_buffer && buf->m_up_buffer->is_meta_buf()) {
+                // Root-split recovery: buf is a new root node (new_root_buf) created in the
+                // crashed CP, sitting directly under the SB in the flush DAG:
+                //   meta_buf(SB) <-- new_root_buf(new-CP) <-- old_root_buf(old-CP, modified)
+                //
+                // There are two sub-cases depending on how far the flush progressed:
+                //
+                // Case A — SB still points to old_root (crash before meta_buf was written):
+                //   persisted_root_was_committed() looks up old_root_buf in bufs and calls
+                //   was_node_committed(old_root_buf).  Returns true only if old_root was
+                //   flushed to disk, confirming the tree is in a consistent mid-split state
+                //   (both old_root and new_root are on disk, only the SB pointer is stale).
+                //   If old_root was NOT flushed, the split is half-done and new_root_buf must
+                //   be discarded.
+                //
+                // Case B — SB already points to new_root (crash after meta_buf was written):
+                //   persisted_root_was_committed() resolves the SB root to new_root_buf's own
+                //   blkid, finds buf itself in bufs, and calls was_node_committed(buf).  Since
+                //   buf_was_committed is already true (we're in this branch), the function
+                //   always returns true.  The blkid is re-committed to the allocator to restore
+                //   any in-memory bitmap state lost during the crash.  set_root_from_committed_buf
+                //   later detects that the SB root already matches new_root and only refreshes
+                //   the in-memory root pointer without rewriting the SB.
+                //
+                // is_final_root is true when the journal's last root-change record for this
+                // ordinal points to buf, and false for intermediate new roots created by earlier
+                // splits in the same CP.  When the same CP contains two or more root splits,
+                // link_buf's Condition 1 (flatten new-to-new links) keeps every intermediate new
+                // root directly under meta_buf rather than under the next new root, so all of
+                // them reach this branch.  m_recovered_root_ids[ordinal] retains only the blkid
+                // from the last root-change journal entry (the final root), so intermediate roots
+                // have is_final_root == false.  They are still committed in the allocator to
+                // prevent blkid reuse, because they were written to disk; but they are reachable
+                // from the final new root as ordinary interior nodes and must not be re-promoted.
+                if (persisted_root_was_committed(buf->m_index_ordinal)) {
+                    commit_recovered_blk(buf);
+                    if (is_final_root) {
+                        new_root_candidates[buf->m_index_ordinal] = buf;
+                        LOGINFOMOD(wbcache, "Recovery found final committed root candidate {}", buf->to_string());
+                    }
+                } else {
+                    LOGTRACEMOD(wbcache, "Discard new-root candidate {} because persisted old root was not written",
+                                buf->to_string());
+                    prune_from_up_buffer(buf);
+                    bufs_to_skip_sanity_check.insert(buf);
+                }
+            } else {
+                // Non-root-split new node: every new-CP node must have an up_buffer in the DAG.
+                HS_DBG_ASSERT(buf->m_up_buffer, "New-CP buf {} has no up_buffer", buf->to_string());
+                if (was_node_committed(buf->m_up_buffer)) {
+                    // Both this node and its parent are on disk; safe to commit.
+                    LOGTRACEMOD(wbcache, "New buffer {} and the up buffer {} are committed", buf->to_string(),
+                                buf->m_up_buffer->to_string());
+                    commit_recovered_blk(buf);
+                    pending_bufs.push_back(buf->m_up_buffer);
+                } else {
+                    // Parent is not yet on disk; discard this node and let the parent be repaired.
+                    LOGTRACEMOD(wbcache, "The up buffer {} is not committed for the new buffer {}",
+                                buf->m_up_buffer->to_string(), buf->to_string());
+                    prune_from_up_buffer(buf);
+                    bufs_to_skip_sanity_check.insert(buf);
+                }
             }
         }
     }
+
+    for (auto const& [ordinal, candidate] : new_root_candidates) {
+        auto const table = index_service().get_index_table(ordinal);
+        HS_REL_ASSERT(table && table->set_root_from_committed_buf(candidate),
+                      "Unable to publish committed root candidate {} for index ordinal {}", candidate->to_string(),
+                      ordinal);
+    }
+
     LOGTRACEMOD(wbcache, "\n\n\nRecovery processing Ends\n\n\n");
 #ifdef _PRERELEASE
     LOGINFOMOD(wbcache, "Index Recovery detected {} nodes out of {} as new/freed nodes to be recovered in prev cp={}",
@@ -823,6 +919,7 @@ void IndexWBCache::recover_buf(IndexBufferPtr const& buf) {
 
 bool IndexWBCache::was_node_committed(IndexBufferPtr const& buf) {
     if (buf == nullptr) { return false; }
+    if (buf->is_meta_buf()) { return false; }
 
     // If the node is freed, then it can be considered committed as long as its up buffer was committed
     if (buf->m_node_freed) {
@@ -830,30 +927,39 @@ bool IndexWBCache::was_node_committed(IndexBufferPtr const& buf) {
         return was_node_committed(buf->m_up_buffer);
     }
 
-    // All down_buf has indicated that they have seen this up buffer, now its time to repair them.
     load_buf(buf);
     if (!BtreeNode::is_valid_node(sisl::blob{buf->m_bytes, m_node_size})) { return false; }
     return (buf->m_dirtied_cp_id == cp_mgr().cp_guard()->id());
 }
 
 //////////////////// CP Related API section /////////////////////////////////
+void IndexWBCache::start_buffer_flush(IndexCPContext* cp_ctx) {
+    cp_ctx->prepare_flush_iteration();
+    m_updated_ordinals.clear();
+    for (auto& fiber : m_cp_flush_fibers) {
+        iomanager.run_on_forget(fiber, [this, cp_ctx]() {
+            IndexBufferPtrList buf_list;
+            get_next_bufs(cp_ctx, resource_mgr().get_dirty_buf_qd(), buf_list);
+
+            for (auto& buf : buf_list) {
+                do_flush_one_buf(cp_ctx, buf, true);
+            }
+            m_vdev->submit_batch();
+        });
+    }
+}
+
 folly::Future< bool > IndexWBCache::async_cp_flush(IndexCPContext* cp_ctx) {
     LOGINFOMOD(wbcache, "Starting Index CP Flush with cp {}, dirty_buf_count={}, nodes_added={}, nodes_removed={}",
                cp_ctx->id(), cp_ctx->m_dirty_buf_count.get(), cp_ctx->m_num_nodes_added.load(),
                cp_ctx->m_num_nodes_removed.load());
     LOGTRACEMOD(wbcache, "Index CP Flush with cp {}, \ndag={}", cp_ctx->id(), cp_ctx->to_string_with_dags());
-    // #ifdef _PRERELEASE
-    //     static int id = 0;
-    //     auto filename = "cp_" + std::to_string(id++) + "_" + std::to_string(rand() % 100) + ".dot";
-    //     LOGTRACEMOD(wbcache, "Transact cp storing in file {}\n\n\n", filename);
-    //     cp_ctx->to_string_dot(filename);
-    // #endif
     if (!cp_ctx->any_dirty_buffers()) {
         LOGINFO("Flush the vdev to ensure all cp information is created");
         // Always try to flush, will be a no-op when not needed
         m_vdev->cp_flush(cp_ctx);
 
-        cp_ctx->complete(true); 
+        cp_ctx->complete(true);
         return folly::makeFuture< bool >(true); // nothing to flush
     }
 
@@ -877,17 +983,55 @@ folly::Future< bool > IndexWBCache::async_cp_flush(IndexCPContext* cp_ctx) {
         }
     }
 
-    cp_ctx->prepare_flush_iteration();
-    m_updated_ordinals.clear();
-    for (auto& fiber : m_cp_flush_fibers) {
-        iomanager.run_on_forget(fiber, [this, cp_ctx]() {
-            IndexBufferPtrList buf_list;
-            get_next_bufs(cp_ctx, resource_mgr().get_dirty_buf_qd(), buf_list);
+    auto preflush_bufs = cp_ctx->root_change_preflush_bufs();
+    if (preflush_bufs.empty()) {
+        start_buffer_flush(cp_ctx);
+    } else {
+        // A root split modifies the persisted root in place. Preflush its new nodes before the normal DAG can write
+        // that root. The DAG writes them again so its completion and recovery semantics remain unchanged.
+        // PhysicalDev batching is reactor-local, so submission must run on an I/O fiber with a drive channel.
+        iomanager.run_on_forget(m_cp_flush_fibers.front(), [this, cp_ctx, preflush_bufs = std::move(preflush_bufs)]() {
+#ifdef _PRERELEASE
+            if (iomgr_flip::instance()->test_flip("crash_during_root_preflush")) {
+                auto const& buf = preflush_bufs.front();
+                LOGINFO("Simulating crash after partially preflushing root-transition node {}", buf->to_string());
+                m_vdev
+                    ->async_write(r_cast< const char* >(buf->raw_buffer()), m_node_size, buf->m_blkid,
+                                  true /* part_of_batch */)
+                    .thenTry([cp_ctx](auto&& result) {
+                        HS_REL_ASSERT(!result.hasException(),
+                                      "Partial root-transition preflush failed with an exception");
+                        auto const error = result.value();
+                        HS_REL_ASSERT(!error, "Partial root-transition preflush failed with error={} ({})",
+                                      error.value(), error.message());
+                        hs()->crash_simulator().crash();
+                        cp_ctx->complete(true);
+                    });
+                m_vdev->submit_batch();
+                return;
+            }
+#endif
 
-            for (auto& buf : buf_list) {
-                do_flush_one_buf(cp_ctx, buf, true);
+            std::vector< folly::Future< std::error_code > > preflush_futures;
+            preflush_futures.reserve(preflush_bufs.size());
+            for (auto const& buf : preflush_bufs) {
+                LOGTRACEMOD(wbcache, "Preflushing root-transition node {}", buf->to_string());
+                preflush_futures.emplace_back(
+                    m_vdev->async_write(r_cast< const char* >(buf->raw_buffer()), m_node_size, buf->m_blkid, true));
             }
             m_vdev->submit_batch();
+            folly::collectAllUnsafe(preflush_futures).thenTry([this, cp_ctx](auto&& preflush_results) {
+                HS_REL_ASSERT(!preflush_results.hasException(), "Root-transition preflush failed with an exception");
+
+                for (auto const& result : preflush_results.value()) {
+                    HS_REL_ASSERT(!result.hasException(), "Root-transition preflush failed with an exception");
+                    auto const error = result.value();
+                    HS_REL_ASSERT(!error, "Root-transition preflush failed with error={} ({})", error.value(),
+                                  error.message());
+                }
+
+                start_buffer_flush(cp_ctx);
+            });
         });
     }
     return cp_ctx->get_future();
